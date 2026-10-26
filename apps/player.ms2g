@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <title>Media Player</title>
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="style.css">
 <style>
 .rdp { border: none !important; }
 </style>
 </head>
 <body>
-<script src="/app-sdk.js"></script>
+<script src="app-sdk.js"></script>
 <script>
 (function () {
 'use strict';
@@ -611,7 +611,6 @@ function onKey(e) {
     if (/^[0-9]$/.test(k) && isFinite(m.duration)) return use(() => { m.currentTime = m.duration * (+k / 10); updateProgress(true); toast(k + '0%'); });
 }
 
-// ---------- startup ----------
 RetroApp.onReady(async ({ opts }) => {
     const items = (opts && opts.items) || [];
     if (!items.length) {

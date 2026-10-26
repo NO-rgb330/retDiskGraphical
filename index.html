@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RetroDesk</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="default">
+    <div id="desktop">
+        <div id="desktop-icons"></div>
+        <div id="window-layer"></div>
+    </div>
+
+    <div id="start-menu" hidden>
+        <div class="sm-header">RetroDesk</div>
+        <div class="sm-apps" id="sm-apps"></div>
+        <div class="sm-footer">
+            <button class="sm-item" id="sm-shutdown">Reload Desktop</button>
+        </div>
+    </div>
+
+    <div id="taskbar">
+        <button id="start-btn"><span class="logo"></span>Start</button>
+        <div id="task-buttons"></div>
+        <div id="tray">
+            <span id="tray-disk" title="Disk usage">—</span>
+            <span id="clock">--:--</span>
+        </div>
+    </div>
+
+    <script src="vfs.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

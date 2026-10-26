@@ -5,9 +5,9 @@
 const $ = s => document.querySelector(s);
 
 const APPS = {
-    explorer: { title: 'Explorer',    icon: '📁', path: 'apps/explorer.ms2g', desktop: true,  width: 980, height: 640 },
-    player:   { title: 'Media Player', icon: '🎵', path: 'apps/player.ms2g',   desktop: false, width: 860, height: 620 },
-    notepad:  { title: 'Notepad',      icon: '📝', path: 'apps/notepad.ms2g',  desktop: true,  width: 780, height: 560 },
+    explorer: { title: 'Explorer',    icon: '<svg viewBox="0 0 16 16"><path d="M1.5 3.5h4.2l1.3 1.6h7.5v7.4a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5z" fill="#f0c060" stroke="#a67c1e"/><path d="M1.5 5.7h13" stroke="#fff" stroke-opacity=".55"/></svg>', path: 'apps/explorer.ms2g', desktop: true,  width: 980, height: 640 },
+    player:   { title: 'Media Player', icon: '<svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="#3272ae"/><path d="M6 4.5v7l6-3.5z" fill="#fff"/></svg>', path: 'apps/player.ms2g',   desktop: false, width: 860, height: 620 },
+    notepad:  { title: 'Notepad',    icon: '<svg viewBox="0 0 16 16"><path d="M3.5 1.5h5.7l3.3 3.3v9.7h-9z" fill="#fff" stroke="#8d9aa8"/><path d="M9.2 1.5v3.3h3.3" fill="#eef2f6" stroke="#8d9aa8"/><rect x="4.6" y="7.3" width="6.8" height="4.8" rx="1" fill="#3a76ae"/></svg>', path: 'apps/notepad.ms2g',  desktop: true,  width: 780, height: 560 },
 };
 
 const windows = new Map();
@@ -37,7 +37,7 @@ function buildDesktopIcons() {
         if (!app.desktop) continue;
         const el = document.createElement('div');
         el.className = 'desk-icon';
-        el.innerHTML = `<span class="di-emoji">${app.icon}</span><span class="di-label">${app.title}</span>`;
+        el.innerHTML = `<span class="di-svg">${app.icon}</span><span class="di-label">${app.title}</span>`;
         el.ondblclick = () => launchApp(id);
         c.appendChild(el);
     }
@@ -50,7 +50,7 @@ function buildStartMenu() {
     for (const [id, app] of Object.entries(APPS)) {
         const b = document.createElement('button');
         b.className = 'sm-item';
-        b.innerHTML = `<span class="sm-emoji">${app.icon}</span> ${app.title}`;
+        b.innerHTML = `<span class="sm-svg">${app.icon}</span> ${app.title}`;
         b.onclick = () => { closeStartMenu(); launchApp(id); };
         c.appendChild(b);
     }
@@ -91,7 +91,7 @@ function createWindow(opts) {
     el.style.zIndex = ++zCounter;
     el.innerHTML = `
         <div class="window-titlebar">
-            <span class="window-icon">${opts.icon || '📄'}</span>
+            <span class="window-icon">${opts.icon || ''}</span>
             <span class="window-title">${esc(opts.title || 'Window')}</span>
             <div class="window-buttons">
                 <button class="wb-min" title="Minimize">–</button>
@@ -102,7 +102,7 @@ function createWindow(opts) {
         <div class="window-content"></div>`;
     $('#window-layer').appendChild(el);
 
-    const win = { id, el, iframe: null, title: opts.title || 'Window', icon: opts.icon || '📄', minimized: false };
+    const win = { id, el, iframe: null, title: opts.title || 'Window', icon: opts.icon || '', minimized: false };
     windows.set(id, win);
 
     el.addEventListener('mousedown', () => focusWindow(id), true);
@@ -160,7 +160,7 @@ function updateTaskbar() {
     for (const w of sorted) {
         const b = document.createElement('button');
         b.className = 'task-btn' + (w.minimized ? ' minimized' : '');
-        b.textContent = w.icon + ' ' + w.title;
+        b.innerHTML = `<span style="display:inline-flex;align-items:center;width:14px;height:14px;margin-right:6px;">${w.icon}</span> ${w.title}`;
         b.onclick = () => {
             if (w.minimized) restoreWindow(w.id);
             else if (parseInt(w.el.style.zIndex) === zCounter) minimizeWindow(w.id);
@@ -191,18 +191,22 @@ async function launchApp(appId, opts = {}) {
 }
 
 async function launchVfsApp(name, html, opts = {}) {
-    const win = createWindow({ title: name || 'App', icon: '📦', width: 900, height: 620 });
+    const win = createWindow({ title: name || 'App', icon: '<svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="#3272ae"/></svg>', width: 900, height: 620 });
     return mountAppHtml(win, html, 'vfs:' + name, opts);
 }
 
 function mountAppHtml(win, html, appId, opts) {
-    const dir = '/apps/';
-    if (!/<base\s/i.test(html)) html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${dir}">`);
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
+    // Inject base href to ensure relative paths (like style.css) resolve correctly
+    const baseHref = new URL('./', window.location.href).href;
+    if (!/<base\s/i.test(html)) {
+        html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`);
+    }
+    // Strip leading slashes from local assets so they load correctly inside srcdoc
+    html = html.replace(/href=["']\/(style\.css)["']/g, 'href="$1"');
+    html = html.replace(/src=["']\/(app-sdk\.js)["']/g, 'src="$1"');
+
     const iframe = document.createElement('iframe');
     iframe.className = 'window-iframe';
-    iframe.src = url;
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads allow-top-navigation-by-user-activation');
     win.iframe = iframe;
     win.el.querySelector('.window-content').appendChild(iframe);
@@ -217,6 +221,9 @@ function mountAppHtml(win, html, appId, opts) {
             [channel.port2]
         );
     });
+    
+    // srcdoc solves the blob URL origin/path issues completely
+    iframe.srcdoc = html;
     return win;
 }
 

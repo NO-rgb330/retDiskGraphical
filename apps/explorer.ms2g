@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Explorer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body data-theme="default">
+    <div id="app">
+        <div class="menubar" id="menubar">
+            <div class="menu"><span class="menu-title">File</span><div class="dropdown">
+                <div class="mi" data-act="upload">Upload Files…</div>
+                <div class="mi" data-act="uploadfolder">Upload Folder…</div>
+                <div class="mi" data-act="newfolder">New Folder</div>
+                <div class="mi sep"></div>
+                <div class="mi" data-act="extractzip">Extract ZIP…</div>
+                <div class="mi" data-act="download">Save to Device</div>
+                <div class="mi" data-act="downloadzip">Save as ZIP…</div>
+                <div class="mi" data-act="rename">Rename</div>
+                <div class="mi" data-act="batchrename">Batch Rename…</div>
+                <div class="mi" data-act="restore">Restore from Trash</div>
+                <div class="mi" data-act="delete">Move to Trash</div>
+                <div class="mi sep"></div>
+                <div class="mi" data-act="shred" style="color:#b03a2a;">Secure Shred…</div>
+            </div></div>
+            <div class="menu"><span class="menu-title">View</span><div class="dropdown">
+                <div class="mi" data-act="toggle_view">Toggle Grid/List</div>
+                <div class="mi" data-act="clear_wallpaper">Clear Wallpaper</div>
+                <div class="mi sep"></div>
+                <div class="mi" data-act="theme_default">Theme: Default</div>
+                <div class="mi" data-act="theme_win98">Theme: Windows 98</div>
+                <div class="mi" data-act="theme_mac">Theme: Classic Mac</div>
+                <div class="mi" data-act="theme_dark">Theme: Dark Mode</div>
+            </div></div>
+            <div class="menu"><span class="menu-title">Tools</span><div class="dropdown">
+                <div class="mi" data-act="find_duplicates">Find Duplicates…</div>
+                <div class="mi" data-act="steganography">Steganography…</div>
+                <div class="mi sep"></div>
+                <div class="mi" data-act="webrtc">WebRTC Share…</div>
+            </div></div>
+            <div class="menu"><span class="menu-title">About</span><div class="dropdown">
+                <div class="mi" data-act="about">About RetroDisk…</div>
+                <div class="mi" data-act="features">Features…</div>
+                <div class="mi" data-act="tutorial">Quick Start Tutorial…</div>
+            </div></div>
+        </div>
+
+        <div class="toolbar">
+            <button class="btn" data-act="up" id="btnUp">Up</button>
+            <button class="btn" data-act="trash" id="btnTrash" style="color:#b03a2a; font-weight:bold;">Trash</button>
+            <div class="tsep"></div>
+            <button class="btn" data-act="upload">Upload</button>
+            <button class="btn" data-act="uploadfolder">Upload Folder</button>
+            <button class="btn" data-act="newfolder">New Folder</button>
+            <div class="tsep"></div>
+            <button class="btn" data-act="download" id="tbDownload" disabled>Save</button>
+            <button class="btn" data-act="downloadzip" id="tbDownloadZip" disabled>Save ZIP</button>
+            <button class="btn" data-act="delete" id="tbDelete" disabled>Delete</button>
+            <div class="tsep"></div>
+            <button class="btn" data-act="toggle_view" id="btnView">Grid</button>
+            <input type="text" class="searchbox" id="searchInput" placeholder="Search...">
+            <span id="backendBadge" style="margin-left:12px;padding:2px 8px;border-radius:3px;background:#e0e0e0;color:#1b1b1b;font-size:10px;font-weight:bold;">Backend: ...</span>
+        </div>
+
+        <div class="addressbar">
+            <span style="color:var(--tx-m);">Address</span>
+            <div class="crumbs" id="crumbs"></div>
+            <button class="btn" id="btnEmptyTrash" style="display:none; padding:2px 8px; font-size:10px;">Empty Trash</button>
+        </div>
+
+        <div class="body">
+            <div class="pane">
+                <div class="listheader" id="listheader">
+                    <div class="col" data-sort="name">Name <span class="sort-arrow">▲</span></div>
+                    <div class="col" data-sort="type">Type <span class="sort-arrow"></span></div>
+                    <div class="col" data-sort="size">Size <span class="sort-arrow"></span></div>
+                    <div class="col" data-sort="modified">Modified <span class="sort-arrow"></span></div>
+                </div>
+                <div class="listbody list" id="listbody"></div>
+            </div>
+            <aside class="sidebar">
+                <div class="panel"><h3>Quick Access</h3><div id="quick-list" style="max-height:150px;overflow-y:auto;"></div></div>
+                <div class="panel"><h3>Disk</h3><div class="meter"><i id="meterFill"></i></div>
+                    <div class="kv"><span>Virtual Used</span><b id="sbUsed">—</b></div>
+                    <div class="kv"><span>Total Quota</span><b id="sbQuota">—</b></div>
+                    <div class="kv"><span>Objects</span><b id="sbCount">—</b></div>
+                </div>
+                <div class="panel"><h3>Selection</h3><div class="selinfo" id="sbSel">Nothing selected.</div></div>
+                <div class="panel"><h3>Actions</h3>
+                    <button class="btn wide" id="sbPreview" disabled>Preview</button>
+                    <button class="btn wide" id="sbDownload" disabled>Save</button>
+                    <button class="btn wide" id="sbDownloadZip" disabled>Save ZIP</button>
+                    <button class="btn wide" id="sbDelete" disabled>Delete</button>
+                </div>
+            </aside>
+        </div>
+
+        <div class="statusbar">
+            <div class="cell" id="stItems">0 objects</div>
+            <div class="cell" id="stSel">None selected</div>
+            <div class="cell grow" id="stMsg">Ready</div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" multiple hidden>
+    <input type="file" id="folderInput" webkitdirectory multiple hidden>
+    <input type="file" id="zipInput" accept=".zip" hidden>
+
+    <div id="ctx-menu">
+        <div class="mi" data-ctx="open">Open</div>
+        <div class="mi" data-ctx="edit">Edit</div>
+        <div class="mi" data-ctx="download">Save to Device</div>
+        <div class="mi" data-ctx="properties">Properties</div>
+        <div class="mi sep"></div>
+        <div class="mi" data-ctx="copy">Copy</div>
+        <div class="mi" data-ctx="cut">Cut</div>
+        <div class="mi" data-ctx="paste" style="display:none;" id="ctx-paste">Paste</div>
+        <div class="mi sep"></div>
+        <div class="mi" data-ctx="quickaccess">Pin to Quick Access</div>
+        <div class="mi" data-ctx="tag">Tag Color</div>
+        <div class="mi" data-ctx="wallpaper">Set as Wallpaper</div>
+        <div class="mi" data-ctx="img_edit">Edit Image</div>
+        <div class="mi sep"></div>
+        <div class="mi" data-ctx="rename">Rename</div>
+        <div class="mi" data-ctx="batchrename">Batch Rename</div>
+        <div class="mi" data-ctx="restore">Restore</div>
+        <div class="mi sep"></div>
+        <div class="mi" data-ctx="delete" style="color:#b03a2a;">Delete</div>
+    </div>
+
+    <div class="modal-back" id="modal" hidden>
+        <div class="modalwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span><span id="modalTitle">Preview</span></div><div class="winbtns"><button class="close" id="modalClose">✕</button></div></div>
+            <div class="modalbody" id="modalBody"></div>
+            <div class="modalfoot"><div class="info" id="modalInfo"></div>
+                <button class="btn" id="modalSaveAsBtn" hidden>Save As</button>
+                <button class="btn" id="modalSaveBtn" hidden>Save Changes</button>
+                <button class="btn" id="modalDownloadBtn">Download</button>
+                <button class="btn" id="modalOk">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-back" id="dlg" hidden>
+        <div class="modalwin dlgwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span><span id="dlgTitle">RetroDisk</span></div><div class="winbtns"><button class="close" id="dlgX">✕</button></div></div>
+            <div class="dlgbody"><label id="dlgLabel"></label><div id="dlgInputContainer"><input type="text" id="dlgInput" spellcheck="false"></div><div class="hint" id="dlgHint" hidden></div></div>
+            <div class="dlgfoot"><button class="btn" id="dlgOk">OK</button><button class="btn" id="dlgCancel">Cancel</button></div>
+        </div>
+    </div>
+
+    <div class="modal-back" id="prop-modal" hidden>
+        <div class="modalwin dlgwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span>Properties</div><div class="winbtns"><button class="close" id="propClose">✕</button></div></div>
+            <div class="dlgbody"><table class="prop-table" id="prop-table"></table></div>
+            <div class="dlgfoot"><button class="btn" id="propOk">Close</button></div>
+        </div>
+    </div>
+
+    <div class="modal-back" id="webrtc-modal" hidden>
+        <div class="modalwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span>WebRTC Local Share</div><div class="winbtns"><button class="close" id="webrtcClose">✕</button></div></div>
+            <div class="dlgbody">
+                <p>Send the selected files to another browser. Both sides exchange one code by hand (copy/paste).</p>
+                <label>Paste the code from the other side:</label>
+                <textarea class="webrtc-box" id="webrtcInput" style="width:100%;height:80px;font:10px monospace;resize:none;"></textarea>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                    <button class="btn" id="webrtcGenerate">1. Create Offer (Host)</button>
+                    <button class="btn" id="webrtcAccept">2. Accept Offer (Receiver)</button>
+                    <button class="btn" id="webrtcApply">3. Apply Answer (Host)</button>
+                </div>
+                <label>Your code (copy to the other side):</label>
+                <textarea class="webrtc-box" id="webrtcOutput" readonly style="width:100%;height:80px;font:10px monospace;resize:none;"></textarea>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button class="btn" id="webrtcSend">Send Selected Files</button>
+                    <span id="webrtcStatus" style="color:var(--tx-m);"></span>
+                </div>
+            </div>
+            <div class="dlgfoot"><button class="btn" id="webrtcOk">Close</button></div>
+        </div>
+    </div>
+
+    <div class="modal-back" id="img-editor-modal" hidden>
+        <div class="modalwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span>Image Editor</div><div class="winbtns"><button class="close" id="imgClose">✕</button></div></div>
+            <div class="modalbody" style="background:#333;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <canvas id="imgCanvas" style="max-width:100%;max-height:60vh;"></canvas>
+            </div>
+            <div class="modalfoot">
+                <button class="btn" id="imgRotate">Rotate 90°</button>
+                <button class="btn" id="imgSave" style="margin-left:auto;">Save &amp; Overwrite</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-back" id="steg-modal" hidden>
+        <div class="modalwin dlgwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span>Steganography</div><div class="winbtns"><button class="close" id="stegClose">✕</button></div></div>
+            <div class="dlgbody">
+                <label>Select an Image:</label>
+                <input type="file" id="stegImg" accept="image/*" style="margin-bottom:15px;width:100%;">
+                <label>Secret Text:</label>
+                <textarea id="stegText" style="height:60px;width:100%;"></textarea>
+                <div style="display:flex;gap:10px;margin-top:10px;">
+                    <button class="btn" id="stegHide">Hide Text in Image</button>
+                    <button class="btn" id="stegExtract">Extract Text</button>
+                </div>
+            </div>
+            <div class="dlgfoot"><button class="btn" id="stegOk">Close</button></div>
+        </div>
+    </div>
+
+    <div class="modal-back" id="dup-modal" hidden>
+        <div class="modalwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span>Duplicate Finder</div><div class="winbtns"><button class="close" id="dupClose">✕</button></div></div>
+            <div class="modalbody" style="display:block;padding:20px;background:var(--win);"><div id="dup-list">Scanning...</div></div>
+            <div class="modalfoot">
+                <button class="btn" id="dupClean" style="color:#b03a2a;">Move Selected to Trash</button>
+                <button class="btn" id="dupOk" style="margin-left:auto;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-back" id="about-modal" hidden>
+        <div class="modalwin aboutwin">
+            <div class="titlebar"><div class="title"><span class="logo"></span>About RetroDisk</div><div class="winbtns"><button class="close" id="aboutClose">✕</button></div></div>
+            <div class="about-tabs" id="aboutTabs">
+                <button class="btn about-tab active" data-tab="about">About</button>
+                <button class="btn about-tab" data-tab="features">Features</button>
+                <button class="btn about-tab" data-tab="tutorial">Tutorial</button>
+                <button class="btn about-tab" data-tab="tips">Tips &amp; Limits</button>
+            </div>
+            <div class="modalbody about-body" id="aboutBody">
+                <section class="about-pane active" data-pane="about">
+                    <h2>RetroDisk 9.5</h2>
+                    <p>RetroDisk is a private file manager that lives entirely in your web browser. It runs as a sandboxed app inside the RetroDesk shell. Files are stored on-device in OPFS or IndexedDB.</p>
+                    <h3>How it works</h3>
+                    <p>Large files are cut into 5&nbsp;MB chunks; text-like files are compressed, and any file can be encrypted with a password (AES-256-GCM + PBKDF2).</p>
+                </section>
+                <section class="about-pane" data-pane="features">
+                    <h3>File management</h3>
+                    <ul>
+                        <li>Folders, breadcrumbs, Up button, grid/list views, sortable columns, live search</li>
+                        <li>Upload files or folders, drag &amp; drop, copy/cut/paste, batch rename</li>
+                        <li>Trash with restore, Empty Trash</li>
+                    </ul>
+                    <h3>Import &amp; export</h3>
+                    <ul>
+                        <li>Extract ZIP archives into any folder</li>
+                        <li>Save files to your device, or save files/folders as a ZIP</li>
+                    </ul>
+                    <h3>Privacy &amp; security</h3>
+                    <ul>
+                        <li>AES-256-GCM encryption with PBKDF2-derived key</li>
+                        <li>Read-once files, secure shred, steganography</li>
+                        <li>Everything stays on your device</li>
+                    </ul>
+                    <h3>Preview &amp; editing</h3>
+                    <ul>
+                        <li>Media player app handles images, video, audio</li>
+                        <li>Notepad app handles text files</li>
+                        <li>PDF inline preview, image rotation, wallpaper</li>
+                    </ul>
+                </section>
+                <section class="about-pane" data-pane="tutorial">
+                    <h3>1. Add files</h3>
+                    <p>Click <b>Upload</b>, or drag-and-drop files/folders into the window.</p>
+                    <h3>2. Organise</h3>
+                    <p>Use the address bar, Up button, context menus. Hold <b>Ctrl</b> to select multiple.</p>
+                    <h3>3. Open files</h3>
+                    <p>Double-click images/videos/audio to open in the Media Player app. Text files open in Notepad. <b>.ms2g</b> files open as apps.</p>
+                    <h3>4. Protect files</h3>
+                    <p>Encrypted files show a red lock and ask for the password on open.</p>
+                    <h3>5. Get files back out</h3>
+                    <p>Select items and press <b>Save</b> or <b>Save ZIP</b>.</p>
+                </section>
+                <section class="about-pane" data-pane="tips">
+                    <h3>Keyboard shortcuts</h3>
+                    <table class="prop-table">
+                        <tr><td>Ctrl + C / X / V</td><td>Copy, cut, paste</td></tr>
+                        <tr><td>Ctrl + A</td><td>Select all</td></tr>
+                        <tr><td>Delete</td><td>Move to Trash (or permanent in Trash)</td></tr>
+                        <tr><td>F2</td><td>Rename</td></tr>
+                        <tr><td>Esc</td><td>Close dialog / menu</td></tr>
+                    </table>
+                    <h3>Limits</h3>
+                    <ul>
+                        <li>Encryption and hashing need HTTPS or localhost.</li>
+                        <li>Browsers cap quota; the Disk panel shows it.</li>
+                        <li>Private windows usually erase storage on close.</li>
+                    </ul>
+                </section>
+            </div>
+            <div class="modalfoot"><div class="info">RetroDisk 9.5 — your files, your browser, your device.</div><button class="btn" id="aboutOk">Close</button></div>
+        </div>
+    </div>
+
+    <script src="/app-sdk.js"></script>
+    <script>
+    (async function () {
+    'use strict';
+
+    const DB = 'rd8', V = 1, N = 'n', R = 'r', O = 'opf8', C = 5 * 1024 * 1024, TRASH = 'trash';
+    const KDF_ITER = 600000, MAX_HASH = 1024 ** 3, MAX_TEXT = 1024 * 1024;
+    const EDITABLE_IMG = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'];
+
+    let EST = { usage: 0, quota: 0 }, purls = [], dlgRes = null, dragIds = null;
+    let sCol = 'name', sAsc = true, sQuery = '', refreshSeq = 0, busy = false;
+    let pvNode = null, imgUrl = null, pc = null, dc = null, rx = null, searchT = null;
+    let clipboard = { action: null, ids: [] };
+    const st = { cwd: R, items: [], sel: new Set(), path: [], isGrid: false, quickAccess: [] };
+
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const uid = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const stat = m => { $('#stMsg').textContent = m || 'Ready'; };
+    const subtleOK = () => !!(window.crypto && crypto.subtle);
+    const clean = s => String(s).replace(/[\/\\]/g, '_').replace(/[\u0000-\u001f]/g, '').trim();
+    const extOf = nm => { const i = nm.lastIndexOf('.'); return i > 0 ? nm.slice(i + 1).toLowerCase() : ''; };
+
+    const ls = {
+        get: (k, d = null) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+        set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+        del: k => { try { localStorage.removeItem(k); } catch (e) {} }
+    };
+
+    const fmtSz = b => {
+        if (b == null) return '—';
+        if (b < 1024) return b + ' B';
+        const u = ['KB', 'MB', 'GB', 'TB']; let n = b, i = -1;
+        do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+        return (n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : Math.round(n)) + ' ' + u[i];
+    };
+    const fmtDt = t => {
+        const d = new Date(t || Date.now()), p = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    };
+
+    // Backwards-compat shims — everything routes through the SDK
+    const list = (pid) => RetroFS.list(pid || st.cwd);
+    const node = (id) => RetroFS.getNode(id);
+    const put = (n) => RetroFS.put(n);
+    const del = (id) => RetroFS.remove(id);
+    const uniq = (n, pid, ex) => RetroFS.uniq(n, pid, ex);
+    const isInside = (id, anc) => RetroFS.isInside(id, anc);
+    const moveToTrash = (id) => RetroFS.moveToTrash(id);
+    const restoreNode = (id) => RetroFS.restore(id);
+    const shredNode = (id) => RetroFS.shred(id);
+    const hashBlob = (b) => RetroFS.hash(b);
+    const add = (file, pid, pwd, opts = {}) => RetroFS.add(file, pid, { ...opts, password: pwd });
+
+    const openNode = async (nd) => {
+        if (!nd.encrypted) {
+            try { const r = await RetroFS.read(nd.id); return { blob: r.blob, pwd: null }; }
+            catch (e) { stat('File data is missing.'); return null; }
+        }
+        if (!subtleOK()) { stat('Encrypted files need HTTPS or localhost.'); return null; }
+        let err = '';
+        for (;;) {
+            const pwd = await ask(nd, err);
+            if (pwd === null) return null;
+            try { const r = await RetroFS.read(nd.id, { password: pwd }); return { blob: r.blob, pwd }; }
+            catch (e) { err = 'Incorrect password (or the file is damaged).'; }
+        }
+    };
+
+    // ---------- file types & icons ----------
+    const EX = {
+        image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'ico', 'tif', 'tiff', 'avif'],
+        video: ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'webm', 'flv', 'mpg', 'mpeg', 'm4v', '3gp'],
+        audio: ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma', 'mid', 'midi', 'opus'],
+        text: ['txt', 'md', 'markdown', 'log', 'csv', 'json', 'xml', 'html', 'htm', 'css', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'ini', 'cfg', 'conf', 'yml', 'yaml', 'toml', 'srt', 'vtt', 'tex', 'sql', 'sh', 'bat', 'ps1', 'py', 'rb', 'php', 'java', 'c', 'h', 'cpp', 'hpp', 'cs', 'go', 'rs', 'swift', 'kt'],
+        exe: ['exe', 'msi', 'cmd', 'com', 'app', 'bin', 'dll', 'apk', 'deb', 'rpm', 'dmg'],
+        archive: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso', 'cab'],
+        pdf: ['pdf'], doc: ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'rtf', 'epub'],
+        app: ['ms2g']
+    };
+    const CL = { image: '#4a9bd6', video: '#d05a5a', audio: '#9a6fd0', text: '#5fa347', exe: '#c07a1e', archive: '#8a7a5a', pdf: '#c04a3a', doc: '#3a76ae', app: '#3272ae', other: '#9aa5b1' };
+
+    const cat = n => {
+        if (n.kind === 'folder') return { cat: 'folder', label: 'Folder' };
+        const e = extOf(n.name);
+        for (const c in EX) if (EX[c].includes(e)) return { cat: c, label: e.toUpperCase() + ' File' };
+        return { cat: 'other', label: e ? e.toUpperCase() + ' File' : 'File' };
+    };
+
+    const IF = (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16"><path d="M1.5 3.5h4.2l1.3 1.6h7.5v7.4a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5z" fill="#f0c060" stroke="#a67c1e"/><path d="M1.5 5.7h13" stroke="#fff" stroke-opacity=".55"/></svg>`;
+    const IL = '<svg width="10" height="10" viewBox="0 0 16 16" fill="#b03a2a"><path d="M8 1a4 4 0 0 0-4 4v2H3v8h10V7h-1V5a4 4 0 0 0-4-4zm-2 4a2 2 0 1 1 4 0v2H6V5z"/></svg>';
+    const DI = (c, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16"><path d="M3.5 1.5h5.7l3.3 3.3v9.7h-9z" fill="#fff" stroke="#8d9aa8"/><path d="M9.2 1.5v3.3h3.3" fill="#eef2f6" stroke="#8d9aa8"/><rect x="4.6" y="7.3" width="6.8" height="4.8" rx="1" fill="${c}"/></svg>`;
+
+    const icon = (n, s = 16) => {
+        let b = n.thumb && !n.encrypted ? `<img src="${n.thumb}">` : (n.kind === 'folder' ? IF(s) : DI(CL[cat(n).cat] || CL.other, s));
+        if (n.encrypted) b += `<span class="lockb">${IL}</span>`;
+        if (n.tag && CSS.supports('color', n.tag)) b += `<div class="tag-dot" style="background:${esc(n.tag)};"></div>`;
+        return b;
+    };
+
+    // ---------- rendering ----------
+    const render = () => {
+        const b = $('#listbody');
+        b.className = 'listbody ' + (st.isGrid ? 'grid' : 'list');
+        const q = sQuery.toLowerCase();
+        const l = q ? st.items.filter(n => n.name.toLowerCase().includes(q)) : st.items;
+        l.sort((a, z) => {
+            if (!q && a.kind !== z.kind) return a.kind === 'folder' ? -1 : 1;
+            let r;
+            if (sCol === 'size') r = (a.size || 0) - (z.size || 0);
+            else if (sCol === 'modified') r = (a.modified || 0) - (z.modified || 0);
+            else if (sCol === 'type') r = cat(a).label.localeCompare(cat(z).label) || a.name.localeCompare(z.name, undefined, { numeric: true, sensitivity: 'base' });
+            else r = a.name.localeCompare(z.name, undefined, { numeric: true, sensitivity: 'base' });
+            return sAsc ? r : -r;
+        });
+        document.querySelectorAll('.listheader .col').forEach(e => {
+            e.querySelector('.sort-arrow').textContent = e.dataset.sort === sCol ? (sAsc ? '▲' : '▼') : '';
+        });
+        if (!l.length) {
+            b.innerHTML = `<div class="empty">${sQuery ? 'No results.' : st.cwd === TRASH ? 'Trash is empty.' : 'Empty folder.'}</div>`;
+            return;
+        }
+        b.innerHTML = l.map(it => `
+            <div class="row${st.sel.has(it.id) ? ' sel' : ''}${it.isUploading ? ' uploading' : ''}" data-id="${esc(it.id)}" draggable="${st.cwd !== TRASH && !it.isUploading}">
+                <div class="col name"><span class="ico">${icon(it, st.isGrid ? 48 : 16)}</span><span class="label">${esc(it.name)} ${it.isUploading ? '<span style="color:var(--t1);font-size:9px;">(Uploading...)</span>' : ''}</span></div>
+                <div class="col type">${cat(it).label}</div>
+                <div class="col size">${it.kind === 'folder' ? '—' : fmtSz(it.size)}</div>
+                <div class="col date">${fmtDt(it.modified)}</div>
+            </div>`).join('');
+    };
+
+    const saveQuick = () => ls.set('rd_quick', JSON.stringify(st.quickAccess));
+    const renderQuick = async () => {
+        const q = $('#quick-list');
+        if (!q) return;
+        const nodes = (await Promise.all(st.quickAccess.map(id => node(id)))).filter(Boolean);
+        if (nodes.length !== st.quickAccess.length) { st.quickAccess = nodes.map(n => n.id); saveQuick(); }
+        if (!nodes.length) { q.innerHTML = '<span style="color:var(--tx-m);font-size:10px;">No pinned items.</span>'; return; }
+        q.innerHTML = nodes.map(n => `<div class="quick-item" data-id="${esc(n.id)}">${n.kind === 'folder' ? IF(14) : DI(CL[cat(n).cat] || CL.other, 14)} <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.name)}</span></div>`).join('');
+    };
+
+    const stats = async () => {
+        try { EST = await RetroFS.estimate(); } catch (e) {}
+        const q = EST.quota || 0, p = q ? Math.min(100, (EST.usage / q) * 100) : 0;
+        $('#meterFill').style.width = p + '%';
+        $('#meterFill').style.background = p > 85 ? '#e79a8c' : p > 60 ? '#f0d27a' : '#96d873';
+        $('#sbUsed').textContent = fmtSz(EST.usage);
+        $('#sbQuota').textContent = q ? fmtSz(q) : 'Unknown';
+        const fileCount = st.items.filter(i => i.kind === 'file').length;
+        const folderCount = st.items.filter(i => i.kind === 'folder').length;
+        $('#sbCount').textContent = `${fileCount} files, ${folderCount} folders`;
+        $('#stItems').textContent = st.items.length + ' objects';
+        renderQuick();
+    };
+
+    const side = () => {
+        const n = st.items.filter(i => st.sel.has(i.id)), one = n.length === 1 ? n[0] : null;
+        if (one) {
+            const r = (one.kind === 'file' && one.size && !one.encrypted) ? Math.round((1 - (one.size / one.size)) * 100) : 0;
+            $('#sbSel').innerHTML = `<b>${esc(one.name)}</b><br>${cat(one).label}<br>${one.kind === 'folder' ? '—' : fmtSz(one.size)}`;
+        } else if (n.length > 1) $('#sbSel').innerHTML = `<b>${n.length} items</b>`;
+        else $('#sbSel').textContent = 'Nothing selected.';
+        const any = n.length > 0;
+        $('#sbPreview').disabled = !(one && one.kind === 'file');
+        $('#sbDownload').disabled = $('#tbDownload').disabled = !any || n.some(i => i.isUploading);
+        $('#sbDownloadZip').disabled = $('#tbDownloadZip').disabled = !any || n.some(i => i.isUploading);
+        $('#sbDelete').disabled = $('#tbDelete').disabled = !any || n.some(i => i.isUploading);
+        $('#stSel').textContent = any ? n.length + ' selected' : 'None selected';
+    };
+
+    const selChanged = () => {
+        document.querySelectorAll('#listbody .row').forEach(r => r.classList.toggle('sel', st.sel.has(r.dataset.id)));
+        side();
+    };
+
+    const refresh = async () => {
+        const seq = ++refreshSeq;
+        if (st.cwd !== R && st.cwd !== TRASH && !(await node(st.cwd))) st.cwd = R;
+        let items;
+        if (sQuery) {
+            items = [];
+            const seen = new Set();
+            const walk = async (id) => {
+                if (seen.has(id)) return;
+                seen.add(id);
+                for (const n of await list(id)) {
+                    items.push(n);
+                    if (n.kind === 'folder') await walk(n.id);
+                }
+            };
+            await walk(st.cwd);
+        } else items = await list(st.cwd);
+        const chain = []; let cur = st.cwd;
+        for (let g = 0; cur && cur !== R && cur !== TRASH && g < 500; g++) {
+            const n = await node(cur); if (!n) break;
+            chain.unshift(n); cur = n.parentId;
+        }
+        if (seq !== refreshSeq) return;
+        st.items = items; st.path = chain;
+        const ids = new Set(items.map(i => i.id));
+        st.sel = new Set(Array.from(st.sel).filter(i => ids.has(i)));
+        const inTrash = cur === TRASH;
+        let crumb = inTrash ? `<span class="cr" data-id="${R}">My Disk</span><span class="sep">▸</span><span class="cr" data-id="${TRASH}">Trash</span>` : `<span class="cr" data-id="${R}">My Disk</span>`;
+        crumb += chain.map(n => `<span class="sep">▸</span><span class="cr" data-id="${esc(n.id)}">${esc(n.name)}</span>`).join('');
+        $('#crumbs').innerHTML = crumb;
+        $('#btnEmptyTrash').style.display = st.cwd === TRASH ? 'inline-flex' : 'none';
+        $('#ctx-paste').style.display = clipboard.action ? 'block' : 'none';
+        $('#btnView').textContent = st.isGrid ? 'List' : 'Grid';
+        render();
+        await stats();
+        side();
+    };
+
+    // ---------- dialogs ----------
+    const dlg = o => new Promise(res => {
+        if (dlgRes) { const r = dlgRes; dlgRes = null; r(null); }
+        dlgRes = res;
+        $('#dlgTitle').textContent = o.title || 'RetroDisk';
+        $('#dlgLabel').textContent = o.label || '';
+        $('#dlgInputContainer').innerHTML = o.input === false ? '' : `<input type="text" id="dlgInput" spellcheck="false" value="${esc(o.value || '')}">`;
+        $('#dlgHint').textContent = o.hint || '';
+        $('#dlgHint').hidden = !o.hint;
+        $('#dlgOk').textContent = o.okText || 'OK';
+        $('#dlg').hidden = false;
+        setTimeout(() => { const i = $('#dlgInput'); if (i) { i.focus(); i.select(); } else $('#dlgOk').focus(); }, 20);
+    });
+    const dlgCl = v => { $('#dlg').hidden = true; if (dlgRes) { const r = dlgRes; dlgRes = null; r(v); } };
+    const confirmDlg = (title, label, okText) => dlg({ title, label, input: false, okText }).then(Boolean);
+
+    const ask = (nd, err) => new Promise(res => {
+        const b = document.createElement('div'); b.className = 'modal-back ask-overlay'; b.style.zIndex = '6000';
+        b.innerHTML = `
+            <div class="modalwin dlgwin">
+                <div class="titlebar"><div class="title"><span class="logo"></span>Password Required</div><div class="winbtns"><button class="close" id="pwc">✕</button></div></div>
+                <div class="dlgbody">
+                    <label>Enter password for <b>${esc(nd.name)}</b>:</label>
+                    <input type="password" id="pwi" autocomplete="off" style="width:100%;">
+                    ${nd.hint ? `<div class="hint">Hint: ${esc(nd.hint)}</div>` : ''}
+                    <div class="hint" style="color:#b03a2a" ${err ? '' : 'hidden'}>${esc(err || '')}</div>
+                </div>
+                <div class="dlgfoot"><button class="btn" id="pwo">OK</button><button class="btn" id="pwx">Cancel</button></div>
+            </div>`;
+        document.body.appendChild(b);
+        const inp = b.querySelector('#pwi'); inp.focus();
+        const cl = s => { b.remove(); res(s); };
+        b.querySelector('#pwc').onclick = b.querySelector('#pwx').onclick = () => cl(null);
+        b.querySelector('#pwo').onclick = () => { if (inp.value) cl(inp.value); else inp.focus(); };
+        b.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); b.querySelector('#pwo').click(); } });
+    });
+
+    const offer = label => new Promise(res => {
+        const p = document.createElement('div'); p.className = 'toast-panel';
+        p.innerHTML = `
+            <div class="titlebar"><div class="title"><span class="logo"></span>Password Protect</div><div class="winbtns"><button class="close" id="tc">✕</button></div></div>
+            <div class="toast-body">
+                <p>Protect <b>${esc(label)}</b>?</p>
+                <input type="password" id="tp" placeholder="Password" autocomplete="new-password">
+                <input type="text" id="th" placeholder="Hint (optional)">
+                <label style="font-size:10px;display:block;margin-bottom:8px;"><input type="checkbox" id="tr"> Self-destruct (Read Once)</label>
+                <div class="toast-btns"><button class="btn" id="ts">Skip</button><button class="btn" id="tpr">Apply</button></div>
+            </div>`;
+        document.body.appendChild(p);
+        const tp = p.querySelector('#tp'); tp.focus();
+        const cl = v => { p.remove(); res(v); };
+        p.querySelector('#tc').onclick = p.querySelector('#ts').onclick = () => cl(null);
+        p.querySelector('#tpr').onclick = () => {
+            const o = { pwd: tp.value, hint: p.querySelector('#th').value.trim(), ro: p.querySelector('#tr').checked };
+            cl(o.pwd || o.ro ? o : null);
+        };
+        p.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); p.querySelector('#tpr').click(); } });
+    });
+
+    // ---------- actions ----------
+    const canWrite = () => {
+        if (st.cwd === TRASH) { stat('Trash is read-only. Open a normal folder first.'); return false; }
+        return true;
+    };
+
+    const saveBlob = (b, name) => {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    };
+
+    const dlNodes = async ns => {
+        for (const n of ns) {
+            const r = await openNode(n);
+            if (!r) continue;
+            if (n.hash) {
+                const h = await hashBlob(r.blob);
+                if (h && h !== n.hash) { alert('Integrity check failed for ' + n.name); continue; }
+            }
+            saveBlob(r.blob, n.name);
+            if (n.ro) await del(n.id);
+        }
+        await refresh();
+    };
+
+    const zipName = (out, p) => {
+        if (!out[p]) return p;
+        const d = p.lastIndexOf('.'), s = p.lastIndexOf('/'), b = d > s + 1 ? p.slice(0, d) : p, e = d > s + 1 ? p.slice(d) : '';
+        let i = 2; while (out[`${b} (${i})${e}`]) i++;
+        return `${b} (${i})${e}`;
+    };
+    const gatherZip = async (nd, prefix, out) => {
+        if (nd.kind === 'folder') {
+            const base = prefix + nd.name + '/';
+            out[base] = new Uint8Array(0);
+            for (const k of await list(nd.id)) await gatherZip(k, base, out);
+            return;
+        }
+        const r = await openNode(nd);
+        if (r) out[zipName(out, prefix + nd.name)] = new Uint8Array(await r.blob.arrayBuffer());
+    };
+
+    const pasteItems = async () => {
+        if (!clipboard.action || !clipboard.ids.length || !canWrite()) return;
+        stat('Pasting...');
+        const copyNode = async (n, pid) => {
+            if (n.kind === 'folder') {
+                const nd = { id: uid(), parentId: pid, name: await uniq(n.name, pid), kind: 'folder', size: 0, compSize: 0, created: Date.now(), modified: Date.now() };
+                if (n.tag) nd.tag = n.tag;
+                await put(nd);
+                for (const k of await list(n.id)) await copyNode(k, nd.id);
+            } else {
+                const r = await openNode(n);
+                if (r) await add(new File([r.blob], n.name, { type: n.mime }), pid, r.pwd, { hint: n.hint, tag: n.tag });
+            }
+        };
+        let refused = 0;
+        try {
+            for (const id of clipboard.ids) {
+                const n = await node(id);
+                if (!n || n.parentId === TRASH) continue;
+                if (n.kind === 'folder' && await isInside(st.cwd, n.id)) { refused++; continue; }
+                if (clipboard.action === 'copy') await copyNode(n, st.cwd);
+                else if (n.parentId !== st.cwd) {
+                    n.parentId = st.cwd; n.name = await uniq(n.name, st.cwd, n.id);
+                    await put(n);
+                }
+            }
+            if (clipboard.action === 'cut' && !refused) clipboard = { action: null, ids: [] };
+            stat(refused ? 'Cannot paste a folder into itself.' : 'Paste complete.');
+        } catch (e) { stat('Paste failed: ' + e.message); }
+        await refresh();
+    };
+
+    const moveIds = async (ids, target) => {
+        for (const id of ids) {
+            if (target === TRASH) { await moveToTrash(id); continue; }
+            const n = await node(id);
+            if (!n || id === target || n.parentId === target) continue;
+            if (n.kind === 'folder' && await isInside(target, id)) continue;
+            n.parentId = target; n.name = await uniq(n.name, target, n.id);
+            await put(n);
+        }
+        st.sel.clear();
+        await refresh();
+    };
+
+    const selNodes = () => st.items.filter(i => st.sel.has(i.id));
+
+    const dirResolver = dest => {
+        const cache = new Map();
+        return async parts => {
+            let path = '', parent = dest;
+            for (const raw of parts) {
+                const p = clean(raw);
+                if (!p || p === '.' || p === '..') continue;
+                path += '/' + p;
+                if (!cache.has(path)) {
+                    const nd = await RetroFS.mkdirAt(parent, p);
+                    cache.set(path, nd.id);
+                    if (parent === st.cwd) { st.items.push(nd); render(); }
+                }
+                parent = cache.get(path);
+            }
+            return parent;
+        };
+    };
+
+    const importItems = async (items, failedPre = 0) => {
+        if (!items.length) return stat('Nothing to upload.');
+        if (busy) return stat('Another operation is still running.');
+        if (!canWrite()) return;
+        busy = true;
+        try {
+            const files = items.filter(i => i.file);
+            const label = files.length === 1 && !items.some(i => i.dirs.length) ? files[0].file.name : `${files.length} file(s)`;
+            const o = files.length ? await offer(label) : null;
+            const resolve = dirResolver(st.cwd);
+            let ok = 0, failed = failedPre, n = 0, lastErr = '';
+            stat('Preparing files...');
+            const queue = [];
+            for (const it of items) {
+                const parent = await resolve(it.dirs);
+                if (!it.file) continue;
+                queue.push({ file: it.file, parent, pwd: o?.pwd || null, opts: { hint: o?.hint, ro: o?.ro } });
+            }
+            render();
+            await sleep(50);
+            for (const { file, parent, pwd, opts } of queue) {
+                try {
+                    stat(`Uploading ${++n}/${files.length}: ${file.name}`);
+                    const nd = await add(file, parent, pwd, opts);
+                    if (parent === st.cwd) st.items.push({ ...nd });
+                    ok++;
+                } catch (e) { failed++; lastErr = e.message; console.error(e); }
+                if (n % 10 === 0) { render(); await sleep(0); }
+            }
+            await refresh();
+            stat(`Added ${ok} of ${files.length} file(s).${failed ? ' ' + failed + ' failed' + (lastErr ? ' (' + lastErr + ')' : '') + '.' : ''}`);
+        } finally { busy = false; }
+    };
+
+    const readAllEntries = dir => new Promise((res, rej) => {
+        const r = dir.createReader(), all = [];
+        const next = () => r.readEntries(b => { if (!b.length) res(all); else { all.push(...b); next(); } }, rej);
+        next();
+    });
+    const walkEntry = async (entry, dirs, out) => {
+        if (entry.isFile) {
+            try { out.push({ dirs, file: await new Promise((res, rej) => entry.file(res, rej)) }); }
+            catch (e) { out.failed = (out.failed || 0) + 1; }
+        } else if (entry.isDirectory) {
+            const d = [...dirs, entry.name];
+            let kids = [];
+            try { kids = await readAllEntries(entry); } catch (e) { out.failed = (out.failed || 0) + 1; }
+            if (!kids.length) out.push({ dirs: d, file: null });
+            for (const k of kids) await walkEntry(k, d, out);
+        }
+    };
+
+    // ---------- media / notepad launchers ----------
+    const launchPlayer = async (n) => {
+        const mediaItems = st.items.filter(i => i.kind === 'file' && ['image', 'video', 'audio'].includes(cat(i).cat));
+        const items = mediaItems.map(i => ({
+            id: i.id, name: i.name, kind: cat(i).cat, mime: i.mime, size: i.size,
+            ext: extOf(i.name), encrypted: i.encrypted, hint: i.hint, isUploading: i.isUploading
+        }));
+        const index = items.findIndex(x => x.id === n.id);
+        await RetroShell.launchApp('player', { items, index: index >= 0 ? index : 0 });
+    };
+    const launchNotepad = async (n) => {
+        await RetroShell.launchApp('notepad', { id: n.id, name: n.name });
+    };
+    const launchVfsApp = async (n) => {
+        try {
+            const r = await RetroFS.read(n.id);
+            const html = await r.blob.text();
+            await RetroShell.launchVfsApp(n.name.replace(/\.ms2g$/i, ''), html, {});
+        } catch (e) { alert('Cannot open app: ' + e.message); }
+    };
+
+    const prev = async (n) => {
+        if (n.kind !== 'file') return;
+        const c = cat(n).cat;
+        if (['image', 'video', 'audio'].includes(c)) return launchPlayer(n);
+        if (c === 'text') return launchNotepad(n);
+        if (c === 'app') return launchVfsApp(n);
+        if (c === 'pdf') {
+            if (pvNode) closePreview();
+            const r = await openNode(n);
+            if (!r) return;
+            const u = URL.createObjectURL(r.blob); purls.push(u); pvNode = n;
+            $('#modalTitle').textContent = n.name;
+            $('#modalInfo').textContent = `${cat(n).label} • ${fmtSz(n.size)}`;
+            $('#modalSaveBtn').hidden = true; $('#modalSaveAsBtn').hidden = true;
+            $('#modalDownloadBtn').onclick = () => saveBlob(r.blob, n.name);
+            $('#modalBody').innerHTML = `<iframe src="${u}"></iframe>`;
+            $('#modal').hidden = false;
+            return;
+        }
+        stat('No preview available.');
+    };
+
+    const closePreview = () => {
+        $('#modal').hidden = true; $('#modalBody').innerHTML = '';
+        purls.forEach(u => URL.revokeObjectURL(u)); purls = [];
+        const n = pvNode; pvNode = null;
+        if (n && n.ro) del(n.id).then(refresh);
+    };
+
+    const act = {
+        upload: () => { if (canWrite()) $('#fileInput').click(); },
+        uploadfolder: () => { if (canWrite()) $('#folderInput').click(); },
+        newfolder: () => {
+            if (!canWrite()) return;
+            dlg({ title: 'New Folder', label: 'Name:', value: 'New Folder' }).then(async n => {
+                n = n && clean(n); if (!n) return;
+                await RetroFS.mkdirAt(st.cwd, n);
+                await refresh();
+            });
+        },
+        extractzip: () => { if (canWrite()) $('#zipInput').click(); },
+        download: () => { const ns = selNodes(); if (ns.some(i => i.kind === 'folder')) return act.downloadzip(); return dlNodes(ns); },
+        downloadzip: async () => {
+            if (typeof fflate === 'undefined') return stat('ZIP library failed to load.');
+            const ns = selNodes(); if (!ns.length) return;
+            const out = {};
+            for (const n of ns) await gatherZip(n, '', out);
+            if (!Object.keys(out).length) return stat('Nothing to save.');
+            saveBlob(new Blob([fflate.zipSync(out)], { type: 'application/zip' }), ns.length === 1 && ns[0].kind === 'folder' ? ns[0].name + '.zip' : 'Export.zip');
+        },
+        delete: () => {
+            const ids = Array.from(st.sel); if (!ids.length) return;
+            const inTr = st.cwd === TRASH;
+            confirmDlg('Confirm', inTr ? `Permanently DELETE ${ids.length} item(s)?` : `Move ${ids.length} item(s) to Trash?`).then(async ok => {
+                if (!ok) return;
+                for (const id of ids) { if (inTr) await del(id); else await moveToTrash(id); }
+                st.sel.clear(); await refresh();
+            });
+        },
+        restore: async () => {
+            if (st.cwd !== TRASH) return;
+            for (const id of Array.from(st.sel)) await restoreNode(id);
+            st.sel.clear(); await refresh(); stat('Restored.');
+        },
+        batchrename: () => {
+            const ns = selNodes(); if (!ns.length || st.cwd === TRASH) return;
+            dlg({ title: 'Batch Rename', label: 'Prefix (e.g. File_):', value: 'File_' }).then(async p => {
+                p = p && clean(p); if (!p) return;
+                const w = Math.max(2, String(ns.length).length);
+                for (let i = 0; i < ns.length; i++) {
+                    const n = ns[i], e = n.kind === 'file' && extOf(n.name) ? '.' + extOf(n.name) : '';
+                    n.name = await uniq(p + String(i + 1).padStart(w, '0') + e, n.parentId, n.id);
+                    n.modified = Date.now();
+                    await put(n);
+                }
+                await refresh();
+            });
+        },
+        shred: () => {
+            const ids = Array.from(st.sel); if (!ids.length) return;
+            confirmDlg('Secure Shred', `Overwrite and permanently delete ${ids.length} item(s)? Cannot be undone.`, 'SHRED').then(async ok => {
+                if (!ok) return;
+                stat('Shredding...');
+                for (const id of ids) await shredNode(id);
+                st.sel.clear(); await refresh(); stat('Shredded.');
+            });
+        },
+        up: () => nav(st.path.length ? (st.path[st.path.length - 1].parentId || R) : R),
+        trash: () => nav(TRASH),
+        empty_trash: () => {
+            confirmDlg('Empty Trash', 'Permanently delete ALL items in Trash?', 'Empty').then(async ok => {
+                if (!ok) return;
+                for (const item of await list(TRASH)) await del(item.id);
+                await refresh(); stat('Trash emptied.');
+            });
+        },
+        rename: () => {
+            const n = selNodes()[0]; if (!n || st.cwd === TRASH) return;
+            const e = n.kind === 'file' && extOf(n.name) ? '.' + extOf(n.name) : '', b = e ? n.name.slice(0, -e.length) : n.name;
+            dlg({ title: 'Rename', label: 'New name:', value: b, hint: e ? `Extension preserved: ${e}` : '' }).then(async v => {
+                v = v && clean(v); if (!v || v === b) return;
+                n.name = await uniq(v + e, n.parentId, n.id);
+                n.modified = Date.now();
+                await put(n); await refresh();
+            });
+        },
+        toggle_view: () => { st.isGrid = !st.isGrid; ls.set('rd_grid', st.isGrid ? '1' : '0'); $('#btnView').textContent = st.isGrid ? 'List' : 'Grid'; render(); },
+        clear_wallpaper: () => { $('#app').style.backgroundImage = ''; $('#app').classList.remove('wp'); ls.del('rd_wallpaper'); },
+        theme_default: () => setTheme('default'),
+        theme_win98: () => setTheme('win98'),
+        theme_mac: () => setTheme('mac'),
+        theme_dark: () => setTheme('dark'),
+        webrtc: () => { $('#webrtc-modal').hidden = false; },
+        about: () => showAbout('about'),
+        features: () => showAbout('features'),
+        tutorial: () => showAbout('tutorial'),
+        steganography: () => { $('#steg-modal').hidden = false; },
+        find_duplicates: async () => {
+            $('#dup-modal').hidden = false;
+            $('#dup-list').textContent = 'Scanning...';
+            const all = [];
+            const seen = new Set();
+            const walk = async (id) => {
+                if (seen.has(id)) return;
+                seen.add(id);
+                for (const n of await list(id)) {
+                    all.push(n);
+                    if (n.kind === 'folder') await walk(n.id);
+                }
+            };
+            await walk(R);
+            const groups = {};
+            all.filter(n => n.kind === 'file' && n.hash && n.size > 0).forEach(f => (groups[f.hash] = groups[f.hash] || []).push(f));
+            const dups = Object.values(groups).filter(g => g.length > 1);
+            if (!dups.length) { $('#dup-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx-m);">No duplicates found.</div>'; return; }
+            $('#dup-list').innerHTML = dups.map((g, i) => `
+                <div style="margin-bottom:15px;border:1px solid var(--bd-l);padding:10px;border-radius:4px;background:var(--pn);">
+                    <b>Group ${i + 1} (${fmtSz(g[0].size)})</b><br>
+                    ${g.map((f, j) => `<label style="display:block;margin:4px 0;"><input type="checkbox" class="dup-chk" data-g="${i}" value="${esc(f.id)}" ${j > 0 ? 'checked' : ''} style="width:auto;margin:0 6px 0 0;"> ${esc(f.name)}</label>`).join('')}
+                </div>`).join('');
+        }
+    };
+
+    const showAbout = tab => {
+        document.querySelectorAll('.about-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        document.querySelectorAll('.about-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === tab));
+        $('#aboutBody').scrollTop = 0;
+        $('#about-modal').hidden = false;
+    };
+
+    const setTheme = t => { document.body.dataset.theme = t; ls.set('rd_theme', t); };
+
+    const showProps = async () => {
+        const n = selNodes()[0]; if (!n) return;
+        $('#prop-table').innerHTML = `
+            <tr><td>Name</td><td>${esc(n.name)}</td></tr>
+            <tr><td>Type</td><td>${cat(n).label}</td></tr>
+            <tr><td>Size</td><td>${n.kind === 'folder' ? '—' : fmtSz(n.size)}</td></tr>
+            <tr><td>Created</td><td>${fmtDt(n.created)}</td></tr>
+            <tr><td>Modified</td><td>${fmtDt(n.modified)}</td></tr>
+            <tr><td>Encrypted</td><td>${n.encrypted ? 'Yes (AES-256-GCM)' : 'No'}</td></tr>
+            <tr><td>Compressed</td><td>${n.compressed ? 'Yes (Gzip)' : 'No'}</td></tr>
+            <tr><td>SHA-256</td><td style="font-family:monospace;word-break:break-all;">${esc(n.hash || '—')}</td></tr>`;
+        $('#prop-modal').hidden = false;
+    };
+
+    const nav = async id => {
+        if (id !== R && id !== TRASH && !(await node(id))) return;
+        st.cwd = id; st.sel.clear(); sQuery = ''; $('#searchInput').value = '';
+        await refresh();
+    };
+
+    const replaceNode = async (n, file, pwd) => {
+        const nd = await add(file, n.parentId, pwd, { exclude: n.id, hint: n.hint, ro: n.ro, tag: n.tag, created: n.created });
+        await del(n.id);
+        st.quickAccess = st.quickAccess.map(i => i === n.id ? nd.id : i); saveQuick();
+        return nd;
+    };
+
+    // ---------- image editor ----------
+    const closeImgEditor = () => {
+        $('#img-editor-modal').hidden = true;
+        if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
+    };
+    const openImgEditor = async (n, b, pwd) => {
+        const img = new Image(); imgUrl = URL.createObjectURL(b);
+        try { img.src = imgUrl; await img.decode(); } catch (e) { closeImgEditor(); return stat('Cannot open this image.'); }
+        $('#img-editor-modal').hidden = false;
+        const c = $('#imgCanvas'), ctx = c.getContext('2d'); let rot = 0;
+        const draw = () => {
+            const sw = rot % 180 !== 0;
+            c.width = sw ? img.height : img.width; c.height = sw ? img.width : img.height;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.translate(c.width / 2, c.height / 2); ctx.rotate(rot * Math.PI / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        };
+        draw();
+        $('#imgRotate').onclick = () => { rot = (rot + 90) % 360; draw(); };
+        $('#imgSave').onclick = () => {
+            if (!rot) { closeImgEditor(); return stat('No changes to save.'); }
+            const ext = extOf(n.name);
+            const type = ext === 'webp' ? 'image/webp' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : 'image/png';
+            const name = (type === 'image/png' && ext !== 'png') ? n.name.replace(/\.[^.]*$/, '') + '.png' : n.name;
+            c.toBlob(async blob => {
+                if (!blob) return stat('Export failed.');
+                try {
+                    const t = blob.type || type, nm = t === type ? name : n.name.replace(/\.[^.]*$/, '') + '.png';
+                    await replaceNode(n, new File([blob], nm, { type: t }), pwd);
+                    closeImgEditor(); await refresh(); stat('Image saved.');
+                } catch (e) { stat('Save failed: ' + e.message); }
+            }, type, 0.92);
+        };
+    };
+
+    // ---------- WebRTC ----------
+    const waitIce = p => new Promise(res => {
+        if (p.iceGatheringState === 'complete') return res();
+        const f = () => { if (p.iceGatheringState === 'complete') { p.removeEventListener('icegatheringstatechange', f); res(); } };
+        p.addEventListener('icegatheringstatechange', f);
+        setTimeout(res, 5000);
+    });
+    const rtcStatus = m => { $('#webrtcStatus').textContent = m; stat(m); };
+    const setupChannel = ch => {
+        dc = ch; ch.binaryType = 'arraybuffer';
+        ch.onopen = () => rtcStatus('Peer connected.');
+        ch.onclose = () => rtcStatus('Peer disconnected.');
+        ch.onmessage = async e => {
+            if (typeof e.data === 'string') {
+                let m; try { m = JSON.parse(e.data); } catch (x) { return; }
+                if (m.t === 'file') { rx = { name: String(m.name || 'file'), mime: String(m.mime || ''), size: Number(m.size) || 0, parts: [], got: 0 }; rtcStatus('Receiving ' + rx.name + '…'); }
+                else if (m.t === 'end' && rx) {
+                    const f = rx; rx = null;
+                    if (f.got !== f.size) return rtcStatus('Transfer of ' + f.name + ' was incomplete.');
+                    try {
+                        await add(new File(f.parts, f.name, { type: f.mime }), st.cwd === TRASH ? R : st.cwd, null);
+                        await refresh(); rtcStatus('Received ' + f.name);
+                    } catch (x) { rtcStatus('Could not save ' + f.name + ': ' + x.message); }
+                }
+            } else if (rx) { rx.parts.push(e.data); rx.got += e.data.byteLength; }
+        };
+    };
+    const newPC = () => {
+        if (pc) { try { pc.close(); } catch (e) {} }
+        pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        pc.ondatachannel = e => setupChannel(e.channel);
+        pc.onconnectionstatechange = () => { if (pc && pc.connectionState === 'failed') rtcStatus('Connection failed.'); };
+    };
+    const parseSDP = () => { try { return JSON.parse($('#webrtcInput').value.trim()); } catch (e) { rtcStatus('Invalid offer/answer.'); return null; } };
+
+    // ---------- steg ----------
+    const lsbIdx = k => ((k / 3) | 0) * 4 + (k % 3);
+    const loadPixels = async file => {
+        const img = new Image(), u = URL.createObjectURL(file);
+        try { img.src = u; await img.decode(); } finally { URL.revokeObjectURL(u); }
+        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+        return { c, ctx, id: ctx.getImageData(0, 0, c.width, c.height) };
+    };
+    const STEG_MAGIC = [0x52, 0x44, 0x53, 0x31];
+
+    // ---------- context menu ----------
+    const showCtx = (x, y, full) => {
+        const c = $('#ctx-menu'), sel = selNodes(), one = sel.length === 1 ? sel[0] : null, tr = st.cwd === TRASH;
+        const isImg = !!one && one.kind === 'file' && cat(one).cat === 'image';
+        const vis = {
+            open: !!one && (!tr || one.kind === 'folder') && !one.isUploading,
+            edit: !!one && one.kind === 'file' && cat(one).cat === 'text' && !tr && !one.isUploading,
+            download: sel.some(i => i.kind === 'file' && !i.isUploading),
+            properties: !!one && !one.isUploading,
+            copy: sel.length > 0 && !tr && !sel.some(i => i.isUploading),
+            cut: sel.length > 0 && !tr && !sel.some(i => i.isUploading),
+            paste: !!clipboard.action && !tr,
+            quickaccess: !!one && !tr && !one.isUploading,
+            tag: sel.length > 0 && !tr && !sel.some(i => i.isUploading),
+            wallpaper: isImg && !tr && !one.isUploading,
+            img_edit: isImg && EDITABLE_IMG.includes(extOf(one.name)) && !tr && !one.isUploading,
+            rename: !!one && !tr && !one.isUploading,
+            batchrename: sel.length > 1 && !tr && !sel.some(i => i.isUploading),
+            restore: tr && sel.length > 0 && !sel.some(i => i.isUploading),
+            delete: sel.length > 0 && !sel.some(i => i.isUploading)
+        };
+        if (!full) for (const k in vis) vis[k] = k === 'paste';
+        c.querySelectorAll('[data-ctx]').forEach(el => { el.style.display = vis[el.dataset.ctx] ? 'block' : 'none'; });
+        c.querySelectorAll('.sep').forEach(el => { el.style.display = full ? 'block' : 'none'; });
+        const q = c.querySelector('[data-ctx="quickaccess"]');
+        if (q) q.textContent = sel.length && sel.every(i => st.quickAccess.includes(i.id)) ? 'Unpin from Quick Access' : 'Pin to Quick Access';
+        const d = c.querySelector('[data-ctx="delete"]');
+        if (d) d.textContent = tr ? 'Delete Permanently' : 'Move to Trash';
+        c.style.display = 'block';
+        c.style.left = Math.max(0, Math.min(x, innerWidth - c.offsetWidth - 4)) + 'px';
+        c.style.top = Math.max(0, Math.min(y, innerHeight - c.offsetHeight - 4)) + 'px';
+    };
+
+    const setClip = action => {
+        if (!st.sel.size || st.cwd === TRASH || st.items.filter(i => st.sel.has(i.id)).some(i => i.isUploading)) return false;
+        clipboard = { action, ids: Array.from(st.sel) };
+        $('#ctx-paste').style.display = 'block';
+        stat(action === 'copy' ? 'Copied.' : 'Cut.');
+        return true;
+    };
+
+    const anyModal = () => !!document.querySelector('.modal-back:not([hidden])') || !!document.querySelector('.toast-panel');
+
+    // ---------- bind ----------
+    const bind = () => {
+        $('#menubar').addEventListener('click', e => {
+            const t = e.target.closest('.menu-title'), m = e.target.closest('.mi');
+            if (t) {
+                const mu = t.parentElement, w = mu.classList.contains('open');
+                $('#menubar').querySelectorAll('.menu').forEach(x => x.classList.remove('open'));
+                if (!w) mu.classList.add('open');
+                e.stopPropagation();
+            } else if (m && act[m.dataset.act]) {
+                $('#menubar').querySelectorAll('.menu').forEach(x => x.classList.remove('open'));
+                act[m.dataset.act]();
+            }
+        });
+        document.addEventListener('click', e => {
+            if (!e.target.closest('#menubar')) $('#menubar').querySelectorAll('.menu').forEach(x => x.classList.remove('open'));
+            if (!e.target.closest('#ctx-menu')) $('#ctx-menu').style.display = 'none';
+            const b = e.target.closest('[data-act]');
+            if (b && !b.closest('#menubar') && act[b.dataset.act] && !b.disabled) act[b.dataset.act]();
+        });
+        document.addEventListener('contextmenu', e => {
+            if (!e.target.closest('#listbody')) return;
+            const r = e.target.closest('.row');
+            if (r) {
+                e.preventDefault();
+                if (!st.sel.has(r.dataset.id)) { st.sel = new Set([r.dataset.id]); selChanged(); }
+                showCtx(e.clientX, e.clientY, true);
+            } else if (clipboard.action && st.cwd !== TRASH) {
+                e.preventDefault(); showCtx(e.clientX, e.clientY, false);
+            }
+        });
+        $('#ctx-menu').addEventListener('click', async e => {
+            const a = e.target.closest('[data-ctx]')?.dataset.ctx;
+            $('#ctx-menu').style.display = 'none';
+            if (!a) return;
+            const n = selNodes()[0];
+            try {
+                if (a === 'open') { if (n) n.kind === 'folder' ? nav(n.id) : prev(n); }
+                else if (a === 'edit') { if (n) prev(n); }
+                else if (a === 'properties') showProps();
+                else if (a === 'quickaccess') {
+                    const ids = Array.from(st.sel);
+                    if (ids.every(id => st.quickAccess.includes(id))) st.quickAccess = st.quickAccess.filter(id => !ids.includes(id));
+                    else ids.forEach(id => { if (!st.quickAccess.includes(id)) st.quickAccess.push(id); });
+                    saveQuick(); renderQuick();
+                }
+                else if (a === 'tag') {
+                    const v = await dlg({ title: 'Tag Color', label: 'Color name or hex (e.g. red, #ff0000), or "none":', value: 'red' });
+                    if (!v) return;
+                    if (v !== 'none' && !CSS.supports('color', v)) return stat('Not a valid color.');
+                    for (const x of selNodes()) { if (v === 'none') delete x.tag; else x.tag = v; await put(x); }
+                    await refresh();
+                }
+                else if (a === 'copy') setClip('copy');
+                else if (a === 'cut') setClip('cut');
+                else if (a === 'paste') await pasteItems();
+                else if (a === 'wallpaper') {
+                    if (!n) return;
+                    const r = await openNode(n); if (!r) return;
+                    const url = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsDataURL(r.blob); });
+                    $('#app').style.backgroundImage = `url("${url}")`; $('#app').classList.add('wp');
+                    if (!ls.set('rd_wallpaper', url)) stat('Wallpaper applied.');
+                }
+                else if (a === 'img_edit') { if (n) { const r = await openNode(n); if (r) openImgEditor(n, r.blob, r.pwd); } }
+                else if (act[a]) act[a]();
+            } catch (err) { console.error(err); stat('Error: ' + err.message); }
+        });
+        $('#listheader').onclick = e => {
+            const c = e.target.closest('.col');
+            if (c && c.dataset.sort) { sCol === c.dataset.sort ? sAsc = !sAsc : (sCol = c.dataset.sort, sAsc = true); render(); }
+        };
+        $('#searchInput').oninput = e => { sQuery = e.target.value; clearTimeout(searchT); searchT = setTimeout(refresh, 150); };
+        $('#listbody').onclick = e => {
+            const r = e.target.closest('.row');
+            if (!r) { st.sel.clear(); selChanged(); return; }
+            const id = r.dataset.id;
+            if (e.ctrlKey || e.metaKey) st.sel.has(id) ? st.sel.delete(id) : st.sel.add(id);
+            else st.sel = new Set([id]);
+            selChanged();
+        };
+        $('#listbody').ondblclick = e => {
+            const r = e.target.closest('.row'); if (!r) return;
+            const n = st.items.find(i => i.id === r.dataset.id);
+            if (n) n.kind === 'folder' ? nav(n.id) : prev(n);
+        };
+        $('#quick-list').onclick = e => {
+            const el = e.target.closest('.quick-item'); if (!el) return;
+            node(el.dataset.id).then(n => { if (n) n.kind === 'folder' ? nav(n.id) : (n.parentId === TRASH ? stat('That file is in the Trash.') : prev(n)); });
+        };
+        $('#crumbs').onclick = e => { const cr = e.target.closest('.cr'); if (cr) nav(cr.dataset.id); };
+
+        // marquee
+        let isMarquee = false, mqStart = { x: 0, y: 0 }, mqBox = null;
+        $('#listbody').addEventListener('mousedown', e => {
+            if (e.target.closest('.row') || e.button !== 0) return;
+            isMarquee = true;
+            const rect = $('#listbody').getBoundingClientRect();
+            mqStart = { x: e.clientX - rect.left + $('#listbody').scrollLeft, y: e.clientY - rect.top + $('#listbody').scrollTop };
+            mqBox = document.createElement('div'); mqBox.className = 'marquee-box';
+            Object.assign(mqBox.style, { left: mqStart.x + 'px', top: mqStart.y + 'px', width: '0', height: '0' });
+            $('#listbody').appendChild(mqBox);
+            if (!e.ctrlKey && !e.metaKey) { st.sel.clear(); selChanged(); }
+        });
+        window.addEventListener('mousemove', e => {
+            if (!isMarquee || !mqBox) return;
+            const rect = $('#listbody').getBoundingClientRect();
+            const curX = e.clientX - rect.left + $('#listbody').scrollLeft;
+            const curY = e.clientY - rect.top + $('#listbody').scrollTop;
+            const left = Math.min(mqStart.x, curX), top = Math.min(mqStart.y, curY);
+            const width = Math.abs(curX - mqStart.x), height = Math.abs(curY - mqStart.y);
+            Object.assign(mqBox.style, { left: left + 'px', top: top + 'px', width: width + 'px', height: height + 'px' });
+            const boxRect = { left, top, right: left + width, bottom: top + height };
+            let changed = false;
+            $('#listbody').querySelectorAll('.row').forEach(r => {
+                const rRect = r.getBoundingClientRect();
+                const rel = {
+                    left: rRect.left - rect.left + $('#listbody').scrollLeft,
+                    top: rRect.top - rect.top + $('#listbody').scrollTop,
+                    right: rRect.right - rect.left + $('#listbody').scrollLeft,
+                    bottom: rRect.bottom - rect.top + $('#listbody').scrollTop
+                };
+                const inside = !(boxRect.right < rel.left || boxRect.left > rel.right || boxRect.bottom < rel.top || boxRect.top > rel.bottom);
+                const has = st.sel.has(r.dataset.id);
+                if (inside && !has) { st.sel.add(r.dataset.id); changed = true; }
+                else if (!inside && has && !e.ctrlKey && !e.metaKey) { st.sel.delete(r.dataset.id); changed = true; }
+            });
+            if (changed) selChanged();
+        });
+        window.addEventListener('mouseup', () => { if (isMarquee) { isMarquee = false; if (mqBox) { mqBox.remove(); mqBox = null; } } });
+
+        // drag & drop internal
+        $('#listbody').ondragstart = e => {
+            const r = e.target.closest('.row');
+            if (!r || st.cwd === TRASH || st.items.filter(i => st.sel.has(i.id)).some(i => i.isUploading)) return e.preventDefault();
+            dragIds = st.sel.has(r.dataset.id) ? Array.from(st.sel) : [r.dataset.id];
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragIds.join(','));
+        };
+        const clearOver = () => document.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+        $('#listbody').ondragend = () => { dragIds = null; clearOver(); };
+        $('#listbody').ondragover = e => {
+            if (!dragIds) return;
+            const r = e.target.closest('.row');
+            const n = r && st.items.find(i => i.id === r.dataset.id);
+            if (!n || n.kind !== 'folder' || dragIds.includes(n.id) || n.isUploading) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+            clearOver(); r.classList.add('drag-over');
+        };
+        $('#listbody').ondrop = async e => {
+            if (!dragIds) return;
+            const ids = dragIds; dragIds = null; clearOver();
+            const r = e.target.closest('.row');
+            const n = r && st.items.find(i => i.id === r.dataset.id);
+            if (n && n.kind === 'folder' && !ids.includes(n.id) && !n.isUploading) { e.preventDefault(); e.stopPropagation(); await moveIds(ids, n.id); }
+        };
+        $('#crumbs').ondragover = e => {
+            const cr = e.target.closest('.cr');
+            if (!dragIds || !cr) return;
+            e.preventDefault(); clearOver(); cr.classList.add('drag-over');
+        };
+        $('#crumbs').ondragleave = clearOver;
+        $('#crumbs').ondrop = async e => {
+            const cr = e.target.closest('.cr');
+            if (!dragIds || !cr) return;
+            e.preventDefault(); const ids = dragIds; dragIds = null; clearOver();
+            await moveIds(ids, cr.dataset.id);
+        };
+        ['dragenter', 'dragover'].forEach(v => $('#listbody').addEventListener(v, e => {
+            if (dragIds) return; e.preventDefault(); $('#listbody').classList.add('drag');
+        }));
+        ['dragleave', 'dragend'].forEach(v => $('#listbody').addEventListener(v, e => {
+            if (v === 'dragleave' && $('#listbody').contains(e.relatedTarget)) return;
+            $('#listbody').classList.remove('drag');
+        }));
+        $('#listbody').addEventListener('drop', e => {
+            if (dragIds) return;
+            e.preventDefault(); $('#listbody').classList.remove('drag');
+            const dt = e.dataTransfer, files = Array.from(dt.files);
+            const entries = dt.items && dt.items.length && dt.items[0].webkitGetAsEntry
+                ? Array.from(dt.items).filter(i => i.kind === 'file').map(i => i.webkitGetAsEntry()).filter(Boolean) : [];
+            (async () => {
+                let items = [];
+                if (entries.length) {
+                    stat('Reading dropped items…');
+                    for (const en of entries) await walkEntry(en, [], items);
+                } else items = files.map(f => ({ dirs: [], file: f }));
+                await importItems(items, items.failed || 0);
+            })().catch(err => stat('Drop failed: ' + err.message));
+        });
+        window.ondragover = e => e.preventDefault();
+        window.ondrop = e => e.preventDefault();
+
+        $('#modalClose').onclick = $('#modalOk').onclick = closePreview;
+        $('#dlgOk').onclick = () => { const i = $('#dlgInput'); dlgCl(i ? (i.value.trim() || null) : true); };
+        $('#dlgCancel').onclick = $('#dlgX').onclick = () => dlgCl(null);
+        $('#dlg').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); $('#dlgOk').click(); }
+        });
+        $('#fileInput').onchange = e => { const fs = Array.from(e.target.files); e.target.value = ''; importItems(fs.map(f => ({ dirs: [], file: f }))); };
+        $('#folderInput').onchange = e => {
+            const fs = Array.from(e.target.files); e.target.value = '';
+            importItems(fs.map(f => ({ dirs: (f.webkitRelativePath || '').split('/').slice(0, -1), file: f })));
+        };
+        $('#zipInput').onchange = async e => {
+            const f = e.target.files[0]; e.target.value = '';
+            if (!f || busy || !canWrite()) return;
+            if (typeof fflate === 'undefined') return stat('ZIP library failed to load.');
+            busy = true;
+            try {
+                stat('Reading ZIP…');
+                const un = fflate.unzipSync(new Uint8Array(await f.arrayBuffer()));
+                const resolve = dirResolver(st.cwd);
+                let cnt = 0;
+                for (const [name, data] of Object.entries(un)) {
+                    if (name.startsWith('__MACOSX/')) continue;
+                    const parts = name.split('/').filter(p => p && p !== '.' && p !== '..').map(clean).filter(Boolean);
+                    if (!parts.length) continue;
+                    const isDir = name.endsWith('/');
+                    const fileName = isDir ? null : parts.pop();
+                    const parent = await resolve(parts);
+                    if (!isDir) { await add(new File([data], fileName), parent, null); stat(`Extracting… ${++cnt}`); }
+                }
+                stat(`ZIP extracted (${cnt} files).`);
+            } catch (err) { console.error(err); stat('ZIP error: ' + err.message); }
+            finally { busy = false; await refresh(); }
+        };
+        $('#sbDelete').onclick = act.delete;
+        $('#sbDownload').onclick = act.download;
+        $('#sbDownloadZip').onclick = act.downloadzip;
+        $('#sbPreview').onclick = () => { const n = selNodes()[0]; if (n) prev(n); };
+        $('#btnEmptyTrash').onclick = act.empty_trash;
+        $('#aboutClose').onclick = $('#aboutOk').onclick = () => { $('#about-modal').hidden = true; };
+        $('#aboutTabs').onclick = e => { const b = e.target.closest('.about-tab'); if (b) showAbout(b.dataset.tab); };
+        $('#propClose').onclick = $('#propOk').onclick = () => { $('#prop-modal').hidden = true; };
+        $('#imgClose').onclick = closeImgEditor;
+        $('#webrtcClose').onclick = $('#webrtcOk').onclick = () => { $('#webrtc-modal').hidden = true; };
+        $('#webrtcGenerate').onclick = async () => {
+            try {
+                newPC(); setupChannel(pc.createDataChannel('file'));
+                await pc.setLocalDescription(await pc.createOffer());
+                rtcStatus('Gathering network info…'); await waitIce(pc);
+                $('#webrtcOutput').value = JSON.stringify(pc.localDescription);
+                rtcStatus('Offer ready. Send it to receiver, then paste their answer and press "Apply Answer".');
+            } catch (e) { rtcStatus('WebRTC error: ' + e.message); }
+        };
+        $('#webrtcAccept').onclick = async () => {
+            const offerSdp = parseSDP(); if (!offerSdp) return;
+            try {
+                newPC();
+                await pc.setRemoteDescription(offerSdp);
+                await pc.setLocalDescription(await pc.createAnswer());
+                rtcStatus('Gathering network info…'); await waitIce(pc);
+                $('#webrtcOutput').value = JSON.stringify(pc.localDescription);
+                rtcStatus('Answer ready. Send it back to the host.');
+            } catch (e) { rtcStatus('WebRTC error: ' + e.message); }
+        };
+        $('#webrtcApply').onclick = async () => {
+            const ans = parseSDP(); if (!ans) return;
+            if (!pc) return rtcStatus('Generate an offer first.');
+            try { await pc.setRemoteDescription(ans); rtcStatus('Connecting…'); } catch (e) { rtcStatus('WebRTC error: ' + e.message); }
+        };
+        $('#webrtcSend').onclick = async () => {
+            if (!dc || dc.readyState !== 'open') return rtcStatus('Not connected yet.');
+            const fs = selNodes().filter(i => i.kind === 'file' && !i.isUploading);
+            if (!fs.length) return rtcStatus('Select files first.');
+            for (const n of fs) {
+                const r = await openNode(n); if (!r) continue;
+                const b = r.blob;
+                dc.send(JSON.stringify({ t: 'file', name: n.name, mime: n.mime, size: b.size }));
+                for (let o = 0; o < b.size; o += 16384) {
+                    while (dc.bufferedAmount > 1048576) await sleep(20);
+                    dc.send(await b.slice(o, o + 16384).arrayBuffer());
+                    if ((o / 16384) % 64 === 0) rtcStatus(`Sending ${n.name}: ${Math.round(o / b.size * 100)}%`);
+                }
+                dc.send(JSON.stringify({ t: 'end' }));
+                rtcStatus('Sent ' + n.name);
+            }
+        };
+        $('#stegClose').onclick = $('#stegOk').onclick = () => { $('#steg-modal').hidden = true; };
+        $('#stegHide').onclick = async () => {
+            const file = $('#stegImg').files[0], text = $('#stegText').value;
+            if (!file || !text) return alert('Select an image and enter text.');
+            if (!canWrite()) return;
+            try {
+                const { c, ctx, id } = await loadPixels(file), d = id.data;
+                for (let i = 3; i < d.length; i += 4) if (d[i] !== 255) return alert('Use an opaque PNG.');
+                const body = new TextEncoder().encode(text), len = body.length;
+                const bytes = new Uint8Array(8 + len);
+                bytes.set(STEG_MAGIC, 0);
+                bytes.set([(len >>> 24) & 255, (len >>> 16) & 255, (len >>> 8) & 255, len & 255], 4);
+                bytes.set(body, 8);
+                const bits = bytes.length * 8;
+                if (bits > Math.floor(d.length / 4) * 3) return alert('Text too long.');
+                for (let k = 0; k < bits; k++) { const bit = (bytes[k >> 3] >> (7 - (k & 7))) & 1, i = lsbIdx(k); d[i] = (d[i] & 0xFE) | bit; }
+                ctx.putImageData(id, 0, 0);
+                c.toBlob(async b => {
+                    if (!b) return alert('Could not create image.');
+                    await add(new File([b], 'secret_' + file.name.replace(/\.[^.]*$/, '') + '.png', { type: 'image/png' }), st.cwd, null);
+                    await refresh(); alert('Image saved with hidden text.');
+                }, 'image/png');
+            } catch (e) { alert('Could not read image: ' + e.message); }
+        };
+        $('#stegExtract').onclick = async () => {
+            const file = $('#stegImg').files[0];
+            if (!file) return alert('Select an image.');
+            try {
+                const d = (await loadPixels(file)).id.data, cap = Math.floor(d.length / 4) * 3;
+                const readByte = k0 => { let v = 0; for (let j = 0; j < 8; j++) v = (v << 1) | (d[lsbIdx(k0 + j)] & 1); return v; };
+                if (cap < 64 || STEG_MAGIC.some((m, i) => readByte(i * 8) !== m)) return alert('No hidden text found.');
+                let len = 0; for (let i = 4; i < 8; i++) len = len * 256 + readByte(i * 8);
+                if (len * 8 + 64 > cap) return alert('Corrupted data.');
+                const out = new Uint8Array(len);
+                for (let i = 0; i < len; i++) out[i] = readByte((8 + i) * 8);
+                alert('Extracted Text:\n' + new TextDecoder().decode(out));
+            } catch (e) { alert('Could not read image: ' + e.message); }
+        };
+        $('#dupClose').onclick = $('#dupOk').onclick = () => { $('#dup-modal').hidden = true; };
+        $('#dupClean').onclick = async () => {
+            const chks = Array.from(document.querySelectorAll('.dup-chk:checked'));
+            if (!chks.length) return;
+            const total = {}, checked = {};
+            document.querySelectorAll('.dup-chk').forEach(c => { total[c.dataset.g] = (total[c.dataset.g] || 0) + 1; });
+            chks.forEach(c => { checked[c.dataset.g] = (checked[c.dataset.g] || 0) + 1; });
+            if (Object.keys(checked).some(g => checked[g] >= total[g])) return alert('Keep at least one copy per group.');
+            for (const c of chks) await moveToTrash(c.value);
+            $('#dup-modal').hidden = true;
+            await refresh(); stat(`${chks.length} duplicate(s) moved to Trash.`);
+        };
+        document.addEventListener('keydown', async e => {
+            if (e.key === 'Escape') {
+                if (!$('#dlg').hidden) { dlgCl(null); return; }
+                for (const [id, fn] of [['#about-modal', () => { $('#about-modal').hidden = true; }], ['#img-editor-modal', closeImgEditor], ['#modal', closePreview], ['#prop-modal', () => { $('#prop-modal').hidden = true; }], ['#webrtc-modal', () => { $('#webrtc-modal').hidden = true; }], ['#steg-modal', () => { $('#steg-modal').hidden = true; }], ['#dup-modal', () => { $('#dup-modal').hidden = true; }]]) {
+                    if (!$(id).hidden) { fn(); return; }
+                }
+                $('#ctx-menu').style.display = 'none';
+                return;
+            }
+            const tag = (e.target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || anyModal()) return;
+            if (e.ctrlKey || e.metaKey) {
+                const k = e.key.toLowerCase();
+                if (k === 'c') setClip('copy');
+                else if (k === 'x') setClip('cut');
+                else if (k === 'v') { e.preventDefault(); await pasteItems(); }
+                else if (k === 'a') { e.preventDefault(); st.sel = new Set(st.items.map(i => i.id)); selChanged(); }
+            } else if (e.key === 'Delete') act.delete();
+            else if (e.key === 'F2') act.rename();
+        });
+        window.addEventListener('beforeunload', e => { if (busy) { e.preventDefault(); e.returnValue = ''; } });
+    };
+
+    // ---------- startup ----------
+    document.body.dataset.theme = ls.get('rd_theme', 'default');
+    st.isGrid = ls.get('rd_grid') === '1';
+    try { st.quickAccess = JSON.parse(ls.get('rd_quick', '[]')) || []; } catch (e) { st.quickAccess = []; }
+    const wp = ls.get('rd_wallpaper');
+    if (wp) { $('#app').style.backgroundImage = `url("${wp}")`; $('#app').classList.add('wp'); }
+    window.addEventListener('unhandledrejection', e => { console.error(e.reason); stat('Error: ' + ((e.reason && e.reason.message) || e.reason)); });
+    window.addEventListener('error', e => { stat('Error: ' + e.message); });
+
+    bind();
+
+    RetroApp.onReady(async (info) => {
+        $('#backendBadge').textContent = 'Backend: ' + (info && info.appTitle ? 'SDK' : 'SDK');
+        try {
+            await refresh();
+            stat(!subtleOK() ? 'Ready. Warning: not a secure context — encryption unavailable.' : 'Ready.');
+        } catch (e) {
+            console.error(e);
+            $('#listbody').innerHTML = '<div class="empty">Critical Error: ' + esc(e.message) + '</div>';
+        }
+    });
+    })();
+    </script>
+</body>
+</html>

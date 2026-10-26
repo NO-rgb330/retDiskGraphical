@@ -1,4 +1,4 @@
-/* ===== Your original theme + app styles (unchanged) ===== */
+/* ===== Your original theme + app styles ===== */
 :root{--bg:#8c9aa9;--win:#ece9e2;--t1:#5a90c6;--t2:#3272ae;--t3:#4a86c0;--tx:#1b1b1b;--tx-m:#6b665c;--bd:#46505a;--bd-l:#b9b4a8;--btn:#fff;--btn-h:#dde7f5;--btn-a:#d8d5cc;--row-h:#eaf2fd;--row-s:#316ac5;--row-st:#e8f0fb;--hd:#faf9f6;--hd-b:#c3bfb4;--pn:#faf9f5;--pn-b:#c3bfb4;--in:#fff;--in-b:#a9a49a;--sc:#f1efe9;--sc-t:#cfcbc1;--chart-bg:#f8f8f8;--chart-line-mem:#316ac5;--chart-line-disk:#4c9a2a;--chart-grid:rgba(0,0,0,0.1);--chart-text:#555}
 [data-theme="win98"]{--bg:#008080;--win:#c0c0c0;--t1:#000080;--t2:#000080;--t3:#1084d0;--tx:#000;--tx-m:#404040;--bd:#fff;--bd-l:#808080;--btn:#c0c0c0;--btn-h:#d0d0d0;--btn-a:#a0a0a0;--row-h:#d0d0d0;--row-s:#000080;--row-st:#fff;--hd:#c0c0c0;--hd-b:#808080;--pn:#c0c0c0;--pn-b:#fff;--in:#fff;--in-b:#808080;--sc:#c0c0c0;--sc-t:#808080;--chart-bg:#c0c0c0;--chart-line-mem:#000080;--chart-line-disk:#008080;--chart-grid:rgba(0,0,0,0.2);--chart-text:#000}
 [data-theme="mac"]{--bg:#666;--win:#ddd;--t1:#ddd;--t2:#ddd;--t3:#ddd;--tx:#000;--tx-m:#555;--bd:#333;--bd-l:#999;--btn:#eee;--btn-h:#fff;--btn-a:#ccc;--row-h:#e0e0e0;--row-s:#000080;--row-st:#fff;--hd:#ddd;--hd-b:#999;--pn:#eee;--pn-b:#999;--in:#fff;--in-b:#999;--sc:#ddd;--sc-t:#999;--chart-bg:#ddd;--chart-line-mem:#000;--chart-line-disk:#666;--chart-grid:rgba(0,0,0,0.15);--chart-text:#333}
@@ -205,13 +205,15 @@
 #desktop-icons{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:14px;z-index:1}
 .desk-icon{display:flex;flex-direction:column;align-items:center;gap:4px;width:82px;padding:8px 4px;border-radius:4px;cursor:pointer;color:#fff;text-shadow:1px 1px 2px rgba(0,0,0,.6);user-select:none;text-align:center}
 .desk-icon:hover{background:rgba(255,255,255,.15)}
-.desk-icon .di-emoji{font-size:34px;line-height:1}
+.desk-icon .di-svg{width:32px;height:32px;display:flex;align-items:center;justify-content:center;}
+.desk-icon .di-svg svg{width:32px;height:32px;}
 .desk-icon .di-label{font-size:11px;word-break:break-word;max-width:76px}
 .window{position:absolute;min-width:280px;min-height:160px;background:var(--win);border:1px solid var(--bd);box-shadow:0 4px 20px rgba(0,0,0,.35);border-radius:4px;display:flex;flex-direction:column;overflow:hidden}
 .window.maximized{inset:0!important;width:auto!important;height:auto!important;border-radius:0}
 .window-titlebar{flex:none;height:30px;display:flex;align-items:center;gap:8px;padding:0 6px 0 10px;background:linear-gradient(180deg,var(--t1),var(--t2),var(--t3));color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);cursor:default;user-select:none}
 .window-title{flex:1;font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.window-icon{font-size:14px}
+.window-icon{width:14px;height:14px;display:flex;align-items:center;justify-content:center;}
+.window-icon svg{width:14px;height:14px;}
 .window-buttons{display:flex;gap:3px}
 .window-buttons button{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;width:22px;height:20px;font-size:12px;line-height:1;padding:0;border-radius:3px;cursor:pointer}
 .window-buttons button:hover{background:rgba(255,255,255,.4)}
@@ -234,5 +236,6 @@
 .sm-apps{padding:6px;display:flex;flex-direction:column;gap:2px;max-height:320px;overflow-y:auto}
 .sm-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:none;border:none;color:var(--tx);text-align:left;cursor:pointer;border-radius:3px;font-size:12px;width:100%}
 .sm-item:hover{background:var(--row-s);color:var(--row-st)}
-.sm-item .sm-emoji{font-size:18px;width:24px;text-align:center}
+.sm-item .sm-svg{width:16px;height:16px;display:flex;align-items:center;justify-content:center;}
+.sm-item .sm-svg svg{width:16px;height:16px;}
 .sm-footer{padding:6px;border-top:1px solid var(--bd-l);background:var(--pn)}

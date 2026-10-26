@@ -1,5 +1,4 @@
-/* Storage engine: OPFS primary, IndexedDB fallback. Extracted from the
-   original app.js, unchanged logic, exposed as window.VFS. */
+/* Storage engine: OPFS primary, IndexedDB fallback. */
 (function () {
 'use strict';
 
@@ -271,6 +270,7 @@ const resolvePath = async p => {
     const parts = p.split('/').filter(Boolean);
     let cur = R;
     for (const part of parts) {
+        if (part === 'Trash') { cur = TRASH; continue; }
         const kids = await list(cur);
         const found = kids.find(k => k.name === part);
         if (!found) return null;

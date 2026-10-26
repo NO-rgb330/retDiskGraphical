@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notepad</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<link rel="stylesheet" href="/style.css">
+<style>
+html, body { height: 100vh; width: 100vw; margin: 0; padding: 0; overflow: hidden; }
+body { display: flex; flex-direction: column; background: var(--win); }
+#toolbar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--hd); border-bottom: 1px solid var(--bd-l); }
+#toolbar .path { flex: 1; font: 11px Consolas, monospace; color: var(--tx-m); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#toolbar .status { font-size: 10px; color: var(--tx-m); }
+#view { flex: 1; min-height: 0; overflow: auto; background: var(--in); display: flex; flex-direction: column; }
+#view pre { margin: 0; padding: 16px; background: #10151a; color: #cfe0ee; font: 12px/1.55 Consolas, monospace; white-space: pre-wrap; flex: 1; }
+#view textarea.editor { flex: 1; margin: 0; padding: 16px; overflow: auto; background: #10151a; color: #cfe0ee; font: 12px/1.55 Consolas, monospace; white-space: pre-wrap; border: none; outline: none; resize: none; }
+#view .markdown-view { padding: 20px; background: var(--win); color: var(--tx); font-size: 14px; line-height: 1.6; flex: 1; overflow: auto; }
+#view .markdown-view h1, #view .markdown-view h2, #view .markdown-view h3 { color: var(--t1); border-bottom: 1px solid var(--bd-l); padding-bottom: 4px; margin-top: 16px; }
+#view .markdown-view code { background: var(--hd); padding: 2px 4px; border-radius: 3px; font-family: Consolas, monospace; }
+#view .markdown-view pre { background: var(--hd); padding: 10px; border-radius: 4px; overflow-x: auto; }
+#view .markdown-view a { color: var(--t1); }
+#view .nopreview { color: var(--tx-m); text-align: center; padding: 48px; }
+</style>
+</head>
+<body>
+<div id="toolbar">
+    <button class="btn" id="btnEdit" hidden>Edit</button>
+    <button class="btn" id="btnSave" hidden>Save Changes</button>
+    <button class="btn" id="btnReload">⟳ Reload</button>
+    <span class="path" id="pathLabel"></span>
+    <span class="status" id="status"></span>
+</div>
+<div id="view"></div>
+
+<script src="/app-sdk.js"></script>
+<script>
+(async function () {
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const extOf = nm => { const i = nm.lastIndexOf('.'); return i > 0 ? nm.slice(i + 1).toLowerCase() : ''; };
+const MAX_TEXT = 1024 * 1024;
+
+let currentId = null;
+let currentName = null;
+let currentPassword = null;
+let text = '';
+let editing = false;
+let crlf = false;
+
+async function promptPassword(hint) {
+    return new Promise(res => {
+        const b = document.createElement('div');
+        b.className = 'modal-back'; b.style.zIndex = '6000';
+        b.innerHTML = `
+            <div class="modalwin dlgwin">
+                <div class="titlebar"><div class="title"><span class="logo"></span>Password Required</div><div class="winbtns"><button class="close" id="pwc">✕</button></div></div>
+                <div class="dlgbody">
+                    <label>Enter password${hint ? ' (hint: ' + esc(hint) + ')' : ''}:</label>
+                    <input type="password" id="pwi" autocomplete="off" style="width:100%;">
+                </div>
+                <div class="dlgfoot"><button class="btn" id="pwo">OK</button><button class="btn" id="pwx">Cancel</button></div>
+            </div>`;
+        document.body.appendChild(b);
+        const inp = b.querySelector('#pwi'); inp.focus();
+        const cl = v => { b.remove(); res(v); };
+        b.querySelector('#pwc').onclick = b.querySelector('#pwx').onclick = () => cl(null);
+        b.querySelector('#pwo').onclick = () => cl(inp.value || null);
+        b.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); b.querySelector('#pwo').click(); } });
+    });
+}
+
+async function load() {
+    if (!currentId) return;
+    let r;
+    try {
+        r = await RetroFS.read(currentId, currentPassword ? { password: currentPassword } : {});
+    } catch (e) {
+        if (e.needsPassword || e.code === 'NEED_PASSWORD') {
+            const pwd = await promptPassword(e.hint);
+            if (!pwd) { $('#view').innerHTML = '<div class="nopreview">Cancelled.</div>'; return; }
+            currentPassword = pwd;
+            return load();
+        }
+        $('#view').innerHTML = '<div class="nopreview" style="color:#b03a2a;">Failed to load: ' + esc(e.message) + '</div>';
+        return;
+    }
+    text = await r.blob.text();
+    crlf = text.includes('\r\n');
+    editing = false;
+    render();
+}
+
+function render() {
+    const ext = extOf(currentName || '');
+    if (editing) {
+        $('#view').innerHTML = '<textarea class="editor" spellcheck="false"></textarea>';
+        $('#view textarea').value = text;
+        $('#btnEdit').hidden = true;
+        $('#btnSave').hidden = false;
+        $('#status').textContent = 'editing';
+        $('#btnSave').onclick = save;
+        return;
+    }
+    $('#btnEdit').hidden = false;
+    $('#btnSave').hidden = true;
+    $('#status').textContent = '';
+    const big = text.length > MAX_TEXT;
+    const shown = big ? text.slice(0, 200 * 1024) : text;
+
+    if (!big && (ext === 'md' || ext === 'markdown')) {
+        $('#view').innerHTML = '<div class="markdown-view"></div>';
+        const v = $('#view .markdown-view');
+        if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+            v.innerHTML = DOMPurify.sanitize(marked.parse(shown));
+            v.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+            v.querySelectorAll('img').forEach(im => {
+                if (!/^(data|blob):/i.test(im.getAttribute('src') || '')) im.replaceWith(document.createTextNode('[image: ' + (im.alt || 'blocked') + ']'));
+            });
+        } else v.textContent = shown;
+    } else {
+        const lang = { js: 'javascript', py: 'python', html: 'html', css: 'css', json: 'json', xml: 'xml' }[ext] || 'plaintext';
+        $('#view').innerHTML = `<pre><code class="language-${lang}"></code></pre>`;
+        const code = $('#view code');
+        code.textContent = shown;
+        if (typeof hljs !== 'undefined') { try { hljs.highlightElement(code); } catch (e) {} }
+        if (big) $('#status').textContent = 'showing first 200 KB';
+    }
+    $('#btnEdit').onclick = () => {
+        if (big) return alert('File is too large to edit here.');
+        editing = true;
+        render();
+    };
+}
+
+async function save() {
+    if (!currentId) return;
+    const ta = $('#view textarea');
+    if (!ta) return;
+    let v = ta.value;
+    if (crlf) v = v.replace(/\r?\n/g, '\r\n');
+    const blob = new Blob([v], { type: 'text/plain' });
+    try {
+        const path = await RetroFS.pathOf(currentId);
+        await RetroFS.write(path, blob, currentPassword ? { password: currentPassword } : {});
+        text = v; editing = false; render();
+        $('#status').textContent = 'saved ✓';
+        setTimeout(() => { if (!editing) $('#status').textContent = ''; }, 1200);
+    } catch (e) {
+        alert('Save failed: ' + e.message);
+    }
+}
+
+$('#btnReload').onclick = () => {
+    if (editing && !confirm('Discard unsaved changes?')) return;
+    editing = false;
+    load();
+};
+
+document.body.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); if (editing) save(); }
+});
+
+RetroApp.onReady(async ({ opts }) => {
+    if (opts && opts.id) {
+        currentId = opts.id;
+        currentName = opts.name || 'file';
+        $('#pathLabel').textContent = currentName;
+        if (RetroShell && RetroShell.setTitle) RetroShell.setTitle('Notepad — ' + currentName);
+        await load();
+    } else {
+        $('#view').innerHTML = '<div class="nopreview">No file loaded.</div>';
+        $('#btnEdit').hidden = true;
+    }
+});
+})();
+</script>
+</body>
+</html>

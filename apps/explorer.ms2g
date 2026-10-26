@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body data-theme="default">
     <div id="app">
@@ -300,7 +300,7 @@
         </div>
     </div>
 
-    <script src="/app-sdk.js"></script>
+    <script src="app-sdk.js"></script>
     <script>
     (async function () {
     'use strict';
@@ -342,7 +342,7 @@
         return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
     };
 
-    // Backwards-compat shims — everything routes through the SDK
+    // Backwards-compat shims
     const list = (pid) => RetroFS.list(pid || st.cwd);
     const node = (id) => RetroFS.getNode(id);
     const put = (n) => RetroFS.put(n);
@@ -370,7 +370,6 @@
         }
     };
 
-    // ---------- file types & icons ----------
     const EX = {
         image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'ico', 'tif', 'tiff', 'avif'],
         video: ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'webm', 'flv', 'mpg', 'mpeg', 'm4v', '3gp'],
@@ -401,7 +400,6 @@
         return b;
     };
 
-    // ---------- rendering ----------
     const render = () => {
         const b = $('#listbody');
         b.className = 'listbody ' + (st.isGrid ? 'grid' : 'list');
@@ -459,7 +457,6 @@
     const side = () => {
         const n = st.items.filter(i => st.sel.has(i.id)), one = n.length === 1 ? n[0] : null;
         if (one) {
-            const r = (one.kind === 'file' && one.size && !one.encrypted) ? Math.round((1 - (one.size / one.size)) * 100) : 0;
             $('#sbSel').innerHTML = `<b>${esc(one.name)}</b><br>${cat(one).label}<br>${one.kind === 'folder' ? '—' : fmtSz(one.size)}`;
         } else if (n.length > 1) $('#sbSel').innerHTML = `<b>${n.length} items</b>`;
         else $('#sbSel').textContent = 'Nothing selected.';
@@ -514,7 +511,6 @@
         side();
     };
 
-    // ---------- dialogs ----------
     const dlg = o => new Promise(res => {
         if (dlgRes) { const r = dlgRes; dlgRes = null; r(null); }
         dlgRes = res;
@@ -573,7 +569,6 @@
         p.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); p.querySelector('#tpr').click(); } });
     });
 
-    // ---------- actions ----------
     const canWrite = () => {
         if (st.cwd === TRASH) { stat('Trash is read-only. Open a normal folder first.'); return false; }
         return true;
@@ -734,7 +729,6 @@
         }
     };
 
-    // ---------- media / notepad launchers ----------
     const launchPlayer = async (n) => {
         const mediaItems = st.items.filter(i => i.kind === 'file' && ['image', 'video', 'audio'].includes(cat(i).cat));
         const items = mediaItems.map(i => ({
@@ -934,7 +928,6 @@
         return nd;
     };
 
-    // ---------- image editor ----------
     const closeImgEditor = () => {
         $('#img-editor-modal').hidden = true;
         if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
@@ -969,7 +962,6 @@
         };
     };
 
-    // ---------- WebRTC ----------
     const waitIce = p => new Promise(res => {
         if (p.iceGatheringState === 'complete') return res();
         const f = () => { if (p.iceGatheringState === 'complete') { p.removeEventListener('icegatheringstatechange', f); res(); } };
@@ -1004,7 +996,6 @@
     };
     const parseSDP = () => { try { return JSON.parse($('#webrtcInput').value.trim()); } catch (e) { rtcStatus('Invalid offer/answer.'); return null; } };
 
-    // ---------- steg ----------
     const lsbIdx = k => ((k / 3) | 0) * 4 + (k % 3);
     const loadPixels = async file => {
         const img = new Image(), u = URL.createObjectURL(file);
@@ -1015,7 +1006,6 @@
     };
     const STEG_MAGIC = [0x52, 0x44, 0x53, 0x31];
 
-    // ---------- context menu ----------
     const showCtx = (x, y, full) => {
         const c = $('#ctx-menu'), sel = selNodes(), one = sel.length === 1 ? sel[0] : null, tr = st.cwd === TRASH;
         const isImg = !!one && one.kind === 'file' && cat(one).cat === 'image';
@@ -1058,7 +1048,6 @@
 
     const anyModal = () => !!document.querySelector('.modal-back:not([hidden])') || !!document.querySelector('.toast-panel');
 
-    // ---------- bind ----------
     const bind = () => {
         $('#menubar').addEventListener('click', e => {
             const t = e.target.closest('.menu-title'), m = e.target.closest('.mi');
@@ -1149,7 +1138,6 @@
         };
         $('#crumbs').onclick = e => { const cr = e.target.closest('.cr'); if (cr) nav(cr.dataset.id); };
 
-        // marquee
         let isMarquee = false, mqStart = { x: 0, y: 0 }, mqBox = null;
         $('#listbody').addEventListener('mousedown', e => {
             if (e.target.closest('.row') || e.button !== 0) return;
@@ -1188,7 +1176,6 @@
         });
         window.addEventListener('mouseup', () => { if (isMarquee) { isMarquee = false; if (mqBox) { mqBox.remove(); mqBox = null; } } });
 
-        // drag & drop internal
         $('#listbody').ondragstart = e => {
             const r = e.target.closest('.row');
             if (!r || st.cwd === TRASH || st.items.filter(i => st.sel.has(i.id)).some(i => i.isUploading)) return e.preventDefault();
@@ -1409,7 +1396,6 @@
         window.addEventListener('beforeunload', e => { if (busy) { e.preventDefault(); e.returnValue = ''; } });
     };
 
-    // ---------- startup ----------
     document.body.dataset.theme = ls.get('rd_theme', 'default');
     st.isGrid = ls.get('rd_grid') === '1';
     try { st.quickAccess = JSON.parse(ls.get('rd_quick', '[]')) || []; } catch (e) { st.quickAccess = []; }
